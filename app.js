@@ -1,31 +1,64 @@
-/******************************************************
+/************************************************************
  * ROSDRIVE - APP WEB
  * GitHub Pages ↔ Google Apps Script ↔ Google Sheets
- ******************************************************/
+ ************************************************************/
 
 const API_URL =
   "https://script.google.com/macros/s/AKfycbwoLmnjN23zYnOU4rUJVe8Phvo5_Q5r15dqBrQb_AYIbPjhFBMAdTKoL14M_WNCkxum/exec";
 
-/* =====================================================
+/* =========================================================
+   CONFIGURACIÓN
+========================================================= */
+
+const API_CACHE_TTL = 120000; // 2 minutos
+
+/*
+ * IMPORTANTE:
+ * Si en tu index.html ya tenés los números de WhatsApp
+ * mediante data-whatsapp, el sistema los toma automáticamente.
+ *
+ * Si querés fijarlos desde acá, completá los números:
+ *
+ * Ejemplo:
+ * Erika: "3415555555"
+ * Bruno: "3415555555"
+ * Hector: "3415555555"
+ *
+ * SIN +, SIN ESPACIOS y SIN 0.
+ */
+
+const SOCIOS = {
+  Erika: "",
+  Bruno: "",
+  Hector: ""
+};
+
+const PORCENTAJES = {
+  Erika: 45,
+  Bruno: 45,
+  Hector: 10
+};
+
+/* =========================================================
    VARIABLES
-===================================================== */
+========================================================= */
 
 let ventas = [];
 let clientes = [];
 let recibos = [];
 let servicios = [];
+let gastos = [];
 
 let dashboardData = {};
 let ultimoRecibo = null;
-
-/* =====================================================
-   CACHE OPTIMIZADA
-===================================================== */
-
-const API_CACHE_TTL = 120000; // 2 minutos
+let ultimoBalance = null;
 
 const apiCache = new Map();
 const apiRequests = new Map();
+
+/* =========================================================
+   CACHE
+========================================================= */
 
 function limpiarCacheAPI() {
   apiCache.clear();
@@ -44,14 +77,16 @@ function obtenerCacheAPI(action) {
   return item.data;
 }
 
-/* =====================================================
+/* =========================================================
    INICIO
-===================================================== */
+========================================================= */
 
 document.addEventListener("DOMContentLoaded", async () => {
 
   inicializarNavegacion();
+
   actualizarFecha();
+
   actualizarTotal();
 
   const servicio = document.getElementById("servicio");
@@ -81,13 +116,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
   }
 
+  inicializarBalance();
+
+  inicializarGastos();
+
   await cargarDatos();
 
 });
 
-/* =====================================================
+/* =========================================================
    NAVEGACIÓN
-===================================================== */
+========================================================= */
 
 function inicializarNavegacion() {
 
@@ -98,9 +137,11 @@ function inicializarNavegacion() {
       button.addEventListener(
         "click",
         () => {
+
           mostrarSeccion(
             button.dataset.section
           );
+
         }
       );
 
@@ -163,6 +204,16 @@ function mostrarSeccion(section) {
     ventas: [
       "Ventas",
       "Historial de operaciones"
+    ],
+
+    gastos: [
+      "Gastos",
+      "Registrar y consultar gastos"
+    ],
+
+    balance: [
+      "Balance",
+      "Balance semanal y distribución"
     ]
 
   };
@@ -191,11 +242,15 @@ function mostrarSeccion(section) {
 
   }
 
+  if (section === "balance") {
+    actualizarBalance();
+  }
+
 }
 
-/* =====================================================
+/* =========================================================
    FECHA
-===================================================== */
+========================================================= */
 
 function actualizarFecha() {
 
@@ -221,9 +276,9 @@ function actualizarFecha() {
 
 }
 
-/* =====================================================
-   API GET OPTIMIZADA
-===================================================== */
+/* =========================================================
+   API GET
+========================================================= */
 
 async function consultarAPI(
   action,
@@ -233,11 +288,6 @@ async function consultarAPI(
   const force =
     opciones.force === true;
 
-  /*
-   * Si no se fuerza actualización,
-   * utilizamos caché.
-   */
-
   if (!force) {
 
     const cache =
@@ -246,11 +296,6 @@ async function consultarAPI(
     if (cache) {
       return cache;
     }
-
-    /*
-     * Si ya existe una consulta igual
-     * en curso, reutilizamos esa promesa.
-     */
 
     if (apiRequests.has(action)) {
       return apiRequests.get(action);
@@ -321,10 +366,9 @@ async function consultarAPI(
 
 }
 
-/* =====================================================
+/* =========================================================
    CARGAR DATOS
-   TODAS LAS CONSULTAS EN PARALELO
-===================================================== */
+========================================================= */
 
 async function cargarDatos(
   opciones = {}
@@ -360,6 +404,11 @@ async function cargarDatos(
 
         consultarAPI(
           "servicios",
+          { force }
+        ),
+
+        consultarAPI(
+          "gastos",
           { force }
         )
 
@@ -508,7 +557,47 @@ async function cargarDatos(
 
     }
 
+    /* GASTOS */
+
+    if (
+      resultados[5].status ===
+      "fulfilled"
+    ) {
+
+      gastos =
+        normalizarLista(
+          resultados[5].value,
+          [
+            "gastos",
+            "data",
+            "resultado"
+          ]
+        );
+
+      renderizarGastos(
+        gastos
+      );
+
+    } else {
+
+      /*
+       * Si todavía no existe la acción gastos
+       * en Apps Script, la aplicación continúa
+       * funcionando normalmente.
+       */
+
+      console.warn(
+        "No se pudieron cargar los gastos:",
+        resultados[5].reason
+      );
+
+      gastos = [];
+
+    }
+
     actualizarEstadisticasGenerales();
+
+    actualizarBalance();
 
   } catch (error) {
 
@@ -523,14 +612,18 @@ async function cargarDatos(
 
 }
 
-/* =====================================================
+/* =========================================================
    NORMALIZAR LISTAS
-===================================================== */
+========================================================= */
 
 function normalizarLista(
   respuesta,
   posiblesPropiedades
 ) {
+
+  if (!respuesta) {
+    return [];
+  }
 
   for (
     const propiedad of posiblesPropiedades
@@ -556,9 +649,9 @@ function normalizarLista(
 
 }
 
-/* =====================================================
+/* =========================================================
    DASHBOARD
-===================================================== */
+========================================================= */
 
 function actualizarDashboard(
   data
@@ -634,9 +727,9 @@ function actualizarDashboard(
 
 }
 
-/* =====================================================
+/* =========================================================
    ÚLTIMAS VENTAS
-===================================================== */
+========================================================= */
 
 function renderizarUltimasVentas(
   lista
@@ -755,18 +848,11 @@ function renderizarUltimasVentas(
 
 }
 
-/* =====================================================
+/* =========================================================
    ESTADÍSTICAS
-===================================================== */
+========================================================= */
 
 function actualizarEstadisticasGenerales() {
-
-  if (
-    dashboardData &&
-    dashboardData.ok
-  ) {
-    return;
-  }
 
   const statRecibos =
     document.getElementById(
@@ -788,19 +874,34 @@ function actualizarEstadisticasGenerales() {
       "statFacturacion"
     );
 
-  if (statRecibos) {
+  if (
+    statRecibos &&
+    recibos.length
+  ) {
+
     statRecibos.textContent =
       recibos.length;
+
   }
 
-  if (statClientes) {
+  if (
+    statClientes &&
+    clientes.length
+  ) {
+
     statClientes.textContent =
       clientes.length;
+
   }
 
-  if (statServicios) {
+  if (
+    statServicios &&
+    servicios.length
+  ) {
+
     statServicios.textContent =
       servicios.length;
+
   }
 
   const total =
@@ -821,7 +922,10 @@ function actualizarEstadisticasGenerales() {
       0
     );
 
-  if (statFacturacion) {
+  if (
+    statFacturacion &&
+    !dashboardData.facturacion
+  ) {
 
     statFacturacion.textContent =
       formatearDinero(
@@ -832,9 +936,9 @@ function actualizarEstadisticasGenerales() {
 
 }
 
-/* =====================================================
+/* =========================================================
    SERVICIOS
-===================================================== */
+========================================================= */
 
 function cargarServicios(
   lista
@@ -904,9 +1008,9 @@ function cargarServicios(
 
 }
 
-/* =====================================================
+/* =========================================================
    PRECIO SERVICIO
-===================================================== */
+========================================================= */
 
 function actualizarPrecioServicio() {
 
@@ -943,9 +1047,9 @@ function actualizarPrecioServicio() {
 
 }
 
-/* =====================================================
+/* =========================================================
    TOTAL
-===================================================== */
+========================================================= */
 
 function actualizarTotal() {
 
@@ -992,9 +1096,9 @@ function actualizarTotal() {
 
 }
 
-/* =====================================================
+/* =========================================================
    GENERAR VENTA
-===================================================== */
+========================================================= */
 
 async function generarVenta() {
 
@@ -1162,12 +1266,6 @@ async function generarVenta() {
 
     limpiarFormulario();
 
-    /*
-     * Se modificó Sheets:
-     * eliminar caché y actualizar
-     * con datos reales.
-     */
-
     limpiarCacheAPI();
 
     await cargarDatos({
@@ -1204,9 +1302,9 @@ async function generarVenta() {
 
 }
 
-/* =====================================================
+/* =========================================================
    RESULTADO RECIBO
-===================================================== */
+========================================================= */
 
 function mostrarResultadoRecibo(
   resultado
@@ -1325,9 +1423,9 @@ function mostrarResultadoRecibo(
 
 }
 
-/* =====================================================
-   WHATSAPP
-===================================================== */
+/* =========================================================
+   WHATSAPP RECIBO
+========================================================= */
 
 function crearMensajeWhatsApp(
   datos,
@@ -1382,9 +1480,9 @@ ${pdf}
 
 }
 
-/* =====================================================
+/* =========================================================
    NORMALIZAR WHATSAPP
-===================================================== */
+========================================================= */
 
 function normalizarWhatsApp(
   telefono
@@ -1442,9 +1540,9 @@ function normalizarWhatsApp(
 
 }
 
-/* =====================================================
+/* =========================================================
    CERRAR MODAL
-===================================================== */
+========================================================= */
 
 function cerrarModal() {
 
@@ -1463,9 +1561,9 @@ function cerrarModal() {
 
 }
 
-/* =====================================================
+/* =========================================================
    LIMPIAR FORMULARIO
-===================================================== */
+========================================================= */
 
 function limpiarFormulario() {
 
@@ -1542,9 +1640,9 @@ function limpiarFormulario() {
 
 }
 
-/* =====================================================
+/* =========================================================
    RECIBOS - FILTRO
-===================================================== */
+========================================================= */
 
 function filtrarRecibos() {
 
@@ -1594,9 +1692,9 @@ function filtrarRecibos() {
 
 }
 
-/* =====================================================
+/* =========================================================
    RECIBOS - RENDER
-===================================================== */
+========================================================= */
 
 function renderizarRecibos(
   lista
@@ -1768,9 +1866,9 @@ function renderizarRecibos(
 
 }
 
-/* =====================================================
+/* =========================================================
    ELIMINAR RECIBO
-===================================================== */
+========================================================= */
 
 async function eliminarRecibo(
   numero
@@ -1853,12 +1951,6 @@ async function eliminarRecibo(
       "success"
     );
 
-    /*
-     * MUY IMPORTANTE:
-     * después de eliminar hay que
-     * actualizar los datos reales.
-     */
-
     limpiarCacheAPI();
 
     await cargarDatos({
@@ -1879,9 +1971,9 @@ async function eliminarRecibo(
 
 }
 
-/* =====================================================
+/* =========================================================
    CLIENTES - FILTRO
-===================================================== */
+========================================================= */
 
 function filtrarClientes() {
 
@@ -1939,9 +2031,9 @@ function filtrarClientes() {
 
 }
 
-/* =====================================================
+/* =========================================================
    CLIENTES - RENDER
-===================================================== */
+========================================================= */
 
 function renderizarClientes(
   lista
@@ -2050,9 +2142,9 @@ function renderizarClientes(
 
 }
 
-/* =====================================================
+/* =========================================================
    VENTAS - FILTRO
-===================================================== */
+========================================================= */
 
 function filtrarVentas() {
 
@@ -2127,9 +2219,9 @@ function filtrarVentas() {
 
 }
 
-/* =====================================================
+/* =========================================================
    VENTAS - RENDER
-===================================================== */
+========================================================= */
 
 function renderizarVentas(
   lista
@@ -2231,7 +2323,9 @@ function renderizarVentas(
 
             <td>
               ${escaparHTML(
-                venta.pago || "-"
+                venta.pago ||
+                venta.formaPago ||
+                "-"
               )}
             </td>
 
@@ -2254,9 +2348,1632 @@ function renderizarVentas(
 
 }
 
-/* =====================================================
+/* =========================================================
+   GASTOS
+========================================================= */
+
+function inicializarGastos() {
+
+  const formulario =
+    document.getElementById(
+      "formGasto"
+    );
+
+  if (!formulario) return;
+
+  formulario.addEventListener(
+    "submit",
+    async event => {
+
+      event.preventDefault();
+
+      await registrarGasto();
+
+    }
+  );
+
+}
+
+async function registrarGasto() {
+
+  const descripcion =
+    obtenerValor(
+      "descripcionGasto"
+    );
+
+  const monto =
+    Number(
+      obtenerValor(
+        "montoGasto"
+      )
+    );
+
+  const categoria =
+    obtenerValor(
+      "categoriaGasto"
+    );
+
+  const fecha =
+    obtenerValor(
+      "fechaGasto"
+    ) ||
+    new Date().toISOString();
+
+  if (!descripcion) {
+
+    mostrarToast(
+      "Ingresá una descripción para el gasto.",
+      "error"
+    );
+
+    return;
+
+  }
+
+  if (!monto || monto <= 0) {
+
+    mostrarToast(
+      "Ingresá un monto válido.",
+      "error"
+    );
+
+    return;
+
+  }
+
+  try {
+
+    const respuesta =
+      await fetch(
+        API_URL,
+        {
+
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "text/plain;charset=utf-8"
+          },
+
+          body:
+            JSON.stringify({
+
+              action:
+                "registrarGasto",
+
+              descripcion,
+              monto,
+              categoria,
+              fecha
+
+            })
+
+        }
+      );
+
+    if (!respuesta.ok) {
+
+      throw new Error(
+        `Error HTTP ${respuesta.status}`
+      );
+
+    }
+
+    const resultado =
+      await respuesta.json();
+
+    if (!resultado.ok) {
+
+      throw new Error(
+        resultado.error ||
+        "No se pudo registrar el gasto."
+      );
+
+    }
+
+    mostrarToast(
+      "Gasto registrado correctamente.",
+      "success"
+    );
+
+    limpiarCacheAPI();
+
+    const formulario =
+      document.getElementById(
+        "formGasto"
+      );
+
+    if (formulario) {
+      formulario.reset();
+    }
+
+    await cargarDatos({
+      force: true
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    mostrarToast(
+      "Error al registrar gasto: " +
+      error.message,
+      "error"
+    );
+
+  }
+
+}
+
+function renderizarGastos(
+  lista
+) {
+
+  const contenedor =
+    document.getElementById(
+      "listaGastos"
+    );
+
+  if (!contenedor) return;
+
+  if (!lista.length) {
+
+    contenedor.innerHTML = `
+
+      <div class="empty-state">
+
+        <div class="empty-icon">
+          💸
+        </div>
+
+        <h3>
+          No hay gastos registrados
+        </h3>
+
+        <p>
+          Los gastos que cargues aparecerán acá.
+        </p>
+
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+  const ordenados =
+    [...lista].sort(
+      (a, b) =>
+        obtenerFechaObjeto(b.fecha) -
+        obtenerFechaObjeto(a.fecha)
+    );
+
+  contenedor.innerHTML = `
+
+    <table class="data-table">
+
+      <thead>
+
+        <tr>
+
+          <th>FECHA</th>
+          <th>DESCRIPCIÓN</th>
+          <th>CATEGORÍA</th>
+          <th>MONTO</th>
+
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        ${ordenados.map(
+          gasto => `
+
+          <tr>
+
+            <td>
+              ${escaparHTML(
+                formatearFecha(
+                  gasto.fecha
+                )
+              )}
+            </td>
+
+            <td>
+              <strong>
+                ${escaparHTML(
+                  gasto.descripcion ||
+                  gasto.detalle ||
+                  "-"
+                )}
+              </strong>
+            </td>
+
+            <td>
+              ${escaparHTML(
+                gasto.categoria ||
+                "-"
+              )}
+            </td>
+
+            <td>
+              <strong>
+                ${formatearDinero(
+                  gasto.monto ||
+                  gasto.total ||
+                  gasto.importe ||
+                  0
+                )}
+              </strong>
+            </td>
+
+          </tr>
+
+        `
+        ).join("")}
+
+      </tbody>
+
+    </table>
+
+  `;
+
+}
+
+/* =========================================================
+   BALANCE
+========================================================= */
+
+function inicializarBalance() {
+
+  const fecha =
+    document.getElementById(
+      "fechaBalance"
+    );
+
+  if (fecha) {
+
+    if (!fecha.value) {
+
+      const hoy =
+        new Date();
+
+      fecha.value =
+        convertirFechaInput(
+          hoy
+        );
+
+    }
+
+    fecha.addEventListener(
+      "change",
+      actualizarBalance
+    );
+
+  }
+
+  const boton =
+    document.getElementById(
+      "btnActualizarBalance"
+    );
+
+  if (boton) {
+
+    boton.addEventListener(
+      "click",
+      () => {
+
+        actualizarBalance();
+
+      }
+    );
+
+  }
+
+}
+
+/* =========================================================
+   OBTENER RANGO SEMANAL
+========================================================= */
+
+function obtenerRangoSemana(
+  fechaBase
+) {
+
+  const fecha =
+    new Date(
+      fechaBase
+    );
+
+  fecha.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  const dia =
+    fecha.getDay();
+
+  /*
+   * Domingo = 0
+   * Lunes = 1
+   */
+
+  const diferencia =
+    dia === 0
+      ? 6
+      : dia - 1;
+
+  const inicio =
+    new Date(
+      fecha
+    );
+
+  inicio.setDate(
+    fecha.getDate() -
+    diferencia
+  );
+
+  inicio.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  const fin =
+    new Date(
+      inicio
+    );
+
+  fin.setDate(
+    inicio.getDate() +
+    6
+  );
+
+  fin.setHours(
+    23,
+    59,
+    59,
+    999
+  );
+
+  return {
+    inicio,
+    fin
+  };
+
+}
+
+/* =========================================================
+   BALANCE PRINCIPAL
+========================================================= */
+
+function actualizarBalance() {
+
+  const fechaInput =
+    document.getElementById(
+      "fechaBalance"
+    );
+
+  let fechaBase =
+    new Date();
+
+  if (
+    fechaInput &&
+    fechaInput.value
+  ) {
+
+    const partes =
+      fechaInput.value.split("-");
+
+    if (partes.length === 3) {
+
+      fechaBase =
+        new Date(
+          Number(partes[0]),
+          Number(partes[1]) - 1,
+          Number(partes[2])
+        );
+
+    }
+
+  }
+
+  const rango =
+    obtenerRangoSemana(
+      fechaBase
+    );
+
+  const ventasSemana =
+    filtrarPorRangoFecha(
+      ventas,
+      rango.inicio,
+      rango.fin
+    );
+
+  const gastosSemana =
+    filtrarPorRangoFecha(
+      gastos,
+      rango.inicio,
+      rango.fin
+    );
+
+  const ingresos =
+    ventasSemana.reduce(
+      (
+        total,
+        venta
+      ) => {
+
+        return (
+          total +
+          obtenerMontoVenta(
+            venta
+          )
+        );
+
+      },
+      0
+    );
+
+  const totalGastos =
+    gastosSemana.reduce(
+      (
+        total,
+        gasto
+      ) => {
+
+        return (
+          total +
+          obtenerMontoGasto(
+            gasto
+          )
+        );
+
+      },
+      0
+    );
+
+  const disponible =
+    ingresos -
+    totalGastos;
+
+  const repartoErika =
+    disponible *
+    (
+      PORCENTAJES.Erika /
+      100
+    );
+
+  const repartoBruno =
+    disponible *
+    (
+      PORCENTAJES.Bruno /
+      100
+    );
+
+  const repartoHector =
+    disponible *
+    (
+      PORCENTAJES.Hector /
+      100
+    );
+
+  ultimoBalance = {
+
+    inicio:
+      rango.inicio,
+
+    fin:
+      rango.fin,
+
+    ingresos,
+    gastos:
+      totalGastos,
+
+    disponible,
+
+    Erika:
+      repartoErika,
+
+    Bruno:
+      repartoBruno,
+
+    Hector:
+      repartoHector,
+
+    ventas:
+      ventasSemana,
+
+    gastosLista:
+      gastosSemana
+
+  };
+
+  renderizarBalance(
+    ultimoBalance
+  );
+
+}
+
+/* =========================================================
+   FILTRAR FECHAS
+========================================================= */
+
+function filtrarPorRangoFecha(
+  lista,
+  inicio,
+  fin
+) {
+
+  if (!Array.isArray(lista)) {
+    return [];
+  }
+
+  return lista.filter(
+    elemento => {
+
+      const fecha =
+        obtenerFechaObjeto(
+          elemento.fecha
+        );
+
+      if (
+        !fecha ||
+        isNaN(fecha.getTime())
+      ) {
+        return false;
+      }
+
+      return (
+        fecha >= inicio &&
+        fecha <= fin
+      );
+
+    }
+  );
+
+}
+
+/* =========================================================
+   OBTENER FECHA
+========================================================= */
+
+function obtenerFechaObjeto(
+  valor
+) {
+
+  if (!valor) {
+    return new Date(0);
+  }
+
+  if (
+    valor instanceof Date
+  ) {
+    return new Date(
+      valor
+    );
+  }
+
+  const texto =
+    String(
+      valor
+    ).trim();
+
+  /*
+   * YYYY-MM-DD
+   */
+
+  if (
+    /^\d{4}-\d{2}-\d{2}$/.test(
+      texto
+    )
+  ) {
+
+    const partes =
+      texto.split("-");
+
+    return new Date(
+      Number(partes[0]),
+      Number(partes[1]) - 1,
+      Number(partes[2])
+    );
+
+  }
+
+  /*
+   * DD/MM/YYYY
+   */
+
+  if (
+    /^\d{2}\/\d{2}\/\d{4}$/.test(
+      texto
+    )
+  ) {
+
+    const partes =
+      texto.split("/");
+
+    return new Date(
+      Number(partes[2]),
+      Number(partes[1]) - 1,
+      Number(partes[0])
+    );
+
+  }
+
+  const fecha =
+    new Date(
+      texto
+    );
+
+  return fecha;
+
+}
+
+/* =========================================================
+   MONTOS
+========================================================= */
+
+function obtenerMontoVenta(
+  venta
+) {
+
+  return Number(
+    venta.total ||
+    venta.importe ||
+    venta.monto ||
+    venta.precio ||
+    0
+  );
+
+}
+
+function obtenerMontoGasto(
+  gasto
+) {
+
+  return Number(
+    gasto.monto ||
+    gasto.total ||
+    gasto.importe ||
+    gasto.valor ||
+    0
+  );
+
+}
+
+/* =========================================================
+   RENDER BALANCE
+========================================================= */
+
+function renderizarBalance(
+  balance
+) {
+
+  if (!balance) return;
+
+  const inicio =
+    formatearFecha(
+      balance.inicio
+    );
+
+  const fin =
+    formatearFecha(
+      balance.fin
+    );
+
+  /* FECHAS */
+
+  const elementoRango =
+    document.getElementById(
+      "rangoBalance"
+    );
+
+  if (elementoRango) {
+
+    elementoRango.textContent =
+      `${inicio} al ${fin}`;
+
+  }
+
+  /* INGRESOS */
+
+  colocarTexto(
+    [
+      "balanceIngresos",
+      "totalIngresos",
+      "statIngresosBalance"
+    ],
+    formatearDinero(
+      balance.ingresos
+    )
+  );
+
+  /* GASTOS */
+
+  colocarTexto(
+    [
+      "balanceGastos",
+      "totalGastos",
+      "statGastosBalance"
+    ],
+    formatearDinero(
+      balance.gastos
+    )
+  );
+
+  /* DISPONIBLE */
+
+  colocarTexto(
+    [
+      "balanceDisponible",
+      "totalDisponible",
+      "balanceNeto",
+      "statDisponibleBalance"
+    ],
+    formatearDinero(
+      balance.disponible
+    )
+  );
+
+  /* ERIKA */
+
+  colocarTexto(
+    [
+      "balanceErika",
+      "totalErika",
+      "montoErika"
+    ],
+    formatearDinero(
+      balance.Erika
+    )
+  );
+
+  /* BRUNO */
+
+  colocarTexto(
+    [
+      "balanceBruno",
+      "totalBruno",
+      "montoBruno"
+    ],
+    formatearDinero(
+      balance.Bruno
+    )
+  );
+
+  /* HECTOR */
+
+  colocarTexto(
+    [
+      "balanceHector",
+      "totalHector",
+      "montoHector"
+    ],
+    formatearDinero(
+      balance.Hector
+    )
+  );
+
+  /* PORCENTAJES */
+
+  colocarTexto(
+    [
+      "porcentajeErika"
+    ],
+    `${PORCENTAJES.Erika}%`
+  );
+
+  colocarTexto(
+    [
+      "porcentajeBruno"
+    ],
+    `${PORCENTAJES.Bruno}%`
+  );
+
+  colocarTexto(
+    [
+      "porcentajeHector"
+    ],
+    `${PORCENTAJES.Hector}%`
+  );
+
+  /* TABLA VENTAS */
+
+  renderizarVentasBalance(
+    balance.ventas
+  );
+
+  /* TABLA GASTOS */
+
+  renderizarGastosBalance(
+    balance.gastosLista
+  );
+
+  /* WHATSAPP */
+
+  configurarWhatsAppBalance(
+    balance
+  );
+
+}
+
+/* =========================================================
+   COLOCAR TEXTO
+========================================================= */
+
+function colocarTexto(
+  ids,
+  valor
+) {
+
+  ids.forEach(
+    id => {
+
+      const elemento =
+        document.getElementById(
+          id
+        );
+
+      if (elemento) {
+        elemento.textContent =
+          valor;
+      }
+
+    }
+  );
+
+}
+
+/* =========================================================
+   TABLA VENTAS BALANCE
+========================================================= */
+
+function renderizarVentasBalance(
+  lista
+) {
+
+  const contenedor =
+    document.getElementById(
+      "ventasBalance"
+    );
+
+  if (!contenedor) return;
+
+  if (!lista.length) {
+
+    contenedor.innerHTML = `
+
+      <div class="empty-state">
+
+        <div class="empty-icon">
+          📈
+        </div>
+
+        <h3>
+          No hubo ventas esta semana
+        </h3>
+
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+  contenedor.innerHTML = `
+
+    <table class="data-table">
+
+      <thead>
+
+        <tr>
+          <th>FECHA</th>
+          <th>CLIENTE</th>
+          <th>SERVICIO</th>
+          <th>TOTAL</th>
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        ${lista.map(
+          venta => `
+
+          <tr>
+
+            <td>
+              ${escaparHTML(
+                formatearFecha(
+                  venta.fecha
+                )
+              )}
+            </td>
+
+            <td>
+              ${escaparHTML(
+                venta.cliente ||
+                "-"
+              )}
+            </td>
+
+            <td>
+              ${escaparHTML(
+                venta.servicio ||
+                "-"
+              )}
+            </td>
+
+            <td>
+              <strong>
+                ${formatearDinero(
+                  obtenerMontoVenta(
+                    venta
+                  )
+                )}
+              </strong>
+            </td>
+
+          </tr>
+
+        `
+        ).join("")}
+
+      </tbody>
+
+    </table>
+
+  `;
+
+}
+
+/* =========================================================
+   TABLA GASTOS BALANCE
+========================================================= */
+
+function renderizarGastosBalance(
+  lista
+) {
+
+  const contenedor =
+    document.getElementById(
+      "gastosBalance"
+    );
+
+  if (!contenedor) return;
+
+  if (!lista.length) {
+
+    contenedor.innerHTML = `
+
+      <div class="empty-state">
+
+        <div class="empty-icon">
+          💸
+        </div>
+
+        <h3>
+          No hubo gastos esta semana
+        </h3>
+
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+  contenedor.innerHTML = `
+
+    <table class="data-table">
+
+      <thead>
+
+        <tr>
+          <th>FECHA</th>
+          <th>DESCRIPCIÓN</th>
+          <th>CATEGORÍA</th>
+          <th>MONTO</th>
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        ${lista.map(
+          gasto => `
+
+          <tr>
+
+            <td>
+              ${escaparHTML(
+                formatearFecha(
+                  gasto.fecha
+                )
+              )}
+            </td>
+
+            <td>
+              ${escaparHTML(
+                gasto.descripcion ||
+                gasto.detalle ||
+                "-"
+              )}
+            </td>
+
+            <td>
+              ${escaparHTML(
+                gasto.categoria ||
+                "-"
+              )}
+            </td>
+
+            <td>
+              <strong>
+                ${formatearDinero(
+                  obtenerMontoGasto(
+                    gasto
+                  )
+                )}
+              </strong>
+            </td>
+
+          </tr>
+
+        `
+        ).join("")}
+
+      </tbody>
+
+    </table>
+
+  `;
+
+}
+
+/* =========================================================
+   WHATSAPP BALANCE
+========================================================= */
+
+function configurarWhatsAppBalance(
+  balance
+) {
+
+  const socios = [
+    {
+      nombre: "Erika",
+      monto: balance.Erika,
+      porcentaje: PORCENTAJES.Erika
+    },
+    {
+      nombre: "Bruno",
+      monto: balance.Bruno,
+      porcentaje: PORCENTAJES.Bruno
+    },
+    {
+      nombre: "Hector",
+      monto: balance.Hector,
+      porcentaje: PORCENTAJES.Hector
+    }
+  ];
+
+  socios.forEach(
+    socio => {
+
+      const numero =
+        obtenerNumeroSocio(
+          socio.nombre
+        );
+
+      const mensaje =
+        crearMensajeBalanceWhatsApp(
+          socio,
+          balance
+        );
+
+      const url =
+        numero
+          ? `https://wa.me/${numero}?text=${encodeURIComponent(
+              mensaje
+            )}`
+          : `https://wa.me/?text=${encodeURIComponent(
+              mensaje
+            )}`;
+
+      const ids = {
+
+        Erika: [
+          "whatsappErika",
+          "btnWhatsAppErika"
+        ],
+
+        Bruno: [
+          "whatsappBruno",
+          "btnWhatsAppBruno"
+        ],
+
+        Hector: [
+          "whatsappHector",
+          "btnWhatsAppHector"
+        ]
+
+      };
+
+      (
+        ids[socio.nombre] ||
+        []
+      ).forEach(
+        id => {
+
+          const elemento =
+            document.getElementById(
+              id
+            );
+
+          if (!elemento) return;
+
+          elemento.href =
+            url;
+
+          elemento.target =
+            "_blank";
+
+          elemento.rel =
+            "noopener";
+
+        }
+      );
+
+    }
+  );
+
+  const botonGeneral =
+    document.getElementById(
+      "whatsappBalanceGeneral"
+    );
+
+  if (botonGeneral) {
+
+    const mensaje =
+      crearMensajeBalanceGeneral(
+        balance
+      );
+
+    botonGeneral.href =
+      `https://wa.me/?text=${encodeURIComponent(
+        mensaje
+      )}`;
+
+    botonGeneral.target =
+      "_blank";
+
+  }
+
+}
+
+/* =========================================================
+   OBTENER NÚMERO SOCIO
+========================================================= */
+
+function obtenerNumeroSocio(
+  nombre
+) {
+
+  let numero =
+    SOCIOS[nombre] ||
+    "";
+
+  /*
+   * También intenta buscarlo
+   * directamente desde el botón.
+   */
+
+  const ids = {
+
+    Erika: [
+      "whatsappErika",
+      "btnWhatsAppErika"
+    ],
+
+    Bruno: [
+      "whatsappBruno",
+      "btnWhatsAppBruno"
+    ],
+
+    Hector: [
+      "whatsappHector",
+      "btnWhatsAppHector"
+    ]
+
+  };
+
+  if (!numero) {
+
+    for (
+      const id of (
+        ids[nombre] ||
+        []
+      )
+    ) {
+
+      const elemento =
+        document.getElementById(
+          id
+        );
+
+      if (!elemento) continue;
+
+      const dataNumero =
+        elemento.dataset
+          ? elemento.dataset.whatsapp
+          : "";
+
+      if (dataNumero) {
+
+        numero =
+          dataNumero;
+
+        break;
+
+      }
+
+    }
+
+  }
+
+  return normalizarWhatsApp(
+    numero
+  );
+
+}
+
+/* =========================================================
+   MENSAJE BALANCE INDIVIDUAL
+========================================================= */
+
+function crearMensajeBalanceWhatsApp(
+  socio,
+  balance
+) {
+
+  return `Hola ${socio.nombre} 👋
+
+Te paso el balance semanal de RosDrive 🚗
+
+📅 Semana:
+${formatearFecha(
+    balance.inicio
+  )} al ${formatearFecha(
+    balance.fin
+  )}
+
+💰 Ingresos:
+${formatearDinero(
+    balance.ingresos
+  )}
+
+💸 Gastos:
+${formatearDinero(
+    balance.gastos
+  )}
+
+💵 Neto a repartir:
+${formatearDinero(
+    balance.disponible
+  )}
+
+📊 Tu porcentaje:
+${socio.porcentaje}%
+
+💰 Tu parte:
+${formatearDinero(
+    socio.monto
+  )}
+
+RosDrive 🚗`;
+
+}
+
+/* =========================================================
+   MENSAJE GENERAL
+========================================================= */
+
+function crearMensajeBalanceGeneral(
+  balance
+) {
+
+  return `📊 BALANCE SEMANAL ROSDRIVE 🚗
+
+📅 ${formatearFecha(
+    balance.inicio
+  )} al ${formatearFecha(
+    balance.fin
+  )}
+
+💰 INGRESOS
+${formatearDinero(
+    balance.ingresos
+  )}
+
+💸 GASTOS
+${formatearDinero(
+    balance.gastos
+  )}
+
+💵 NETO
+${formatearDinero(
+    balance.disponible
+  )}
+
+👩 ERIKA - ${PORCENTAJES.Erika}%
+${formatearDinero(
+    balance.Erika
+  )}
+
+👨 BRUNO - ${PORCENTAJES.Bruno}%
+${formatearDinero(
+    balance.Bruno
+  )}
+
+👨 HÉCTOR - ${PORCENTAJES.Hector}%
+${formatearDinero(
+    balance.Hector
+  )}
+
+RosDrive 🚗`;
+
+}
+
+/* =========================================================
+   CERRAR BALANCE
+========================================================= */
+
+async function cerrarBalance() {
+
+  if (!ultimoBalance) {
+
+    actualizarBalance();
+
+  }
+
+  if (!ultimoBalance) {
+
+    mostrarToast(
+      "No hay un balance para cerrar.",
+      "error"
+    );
+
+    return;
+
+  }
+
+  const balance =
+    ultimoBalance;
+
+  const confirmado =
+    confirm(
+      `¿Cerrar el balance semanal?\n\n` +
+
+      `Ingresos: ${formatearDinero(
+        balance.ingresos
+      )}\n` +
+
+      `Gastos: ${formatearDinero(
+        balance.gastos
+      )}\n` +
+
+      `Neto: ${formatearDinero(
+        balance.disponible
+      )}\n\n` +
+
+      `Erika 45%: ${formatearDinero(
+        balance.Erika
+      )}\n` +
+
+      `Bruno 45%: ${formatearDinero(
+        balance.Bruno
+      )}\n` +
+
+      `Héctor 10%: ${formatearDinero(
+        balance.Hector
+      )}`
+    );
+
+  if (!confirmado) {
+    return;
+  }
+
+  try {
+
+    const respuesta =
+      await fetch(
+        API_URL,
+        {
+
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "text/plain;charset=utf-8"
+          },
+
+          body:
+            JSON.stringify({
+
+              action:
+                "cerrarBalance",
+
+              inicio:
+                convertirFechaInput(
+                  balance.inicio
+                ),
+
+              fin:
+                convertirFechaInput(
+                  balance.fin
+                ),
+
+              ingresos:
+                balance.ingresos,
+
+              gastos:
+                balance.gastos,
+
+              neto:
+                balance.disponible,
+
+              Erika:
+                balance.Erika,
+
+              Bruno:
+                balance.Bruno,
+
+              Hector:
+                balance.Hector
+
+            })
+
+        }
+      );
+
+    if (!respuesta.ok) {
+
+      throw new Error(
+        `Error HTTP ${respuesta.status}`
+      );
+
+    }
+
+    const resultado =
+      await respuesta.json();
+
+    if (!resultado.ok) {
+
+      throw new Error(
+        resultado.error ||
+        "No se pudo cerrar el balance."
+      );
+
+    }
+
+    mostrarToast(
+      "Balance cerrado correctamente.",
+      "success"
+    );
+
+    limpiarCacheAPI();
+
+    await cargarDatos({
+      force: true
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    /*
+     * Si Apps Script todavía no tiene
+     * la función de cerrar balance,
+     * mostramos igualmente el resumen.
+     */
+
+    mostrarToast(
+      "El balance fue calculado, pero no pudo guardarse: " +
+      error.message,
+      "error"
+    );
+
+  }
+
+}
+
+/* =========================================================
+   FORMATEAR FECHA
+========================================================= */
+
+function formatearFecha(
+  valor
+) {
+
+  const fecha =
+    obtenerFechaObjeto(
+      valor
+    );
+
+  if (
+    !fecha ||
+    isNaN(
+      fecha.getTime()
+    )
+  ) {
+
+    return "-";
+
+  }
+
+  return fecha.toLocaleDateString(
+    "es-AR",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric"
+    }
+  );
+
+}
+
+function convertirFechaInput(
+  fecha
+) {
+
+  const d =
+    new Date(
+      fecha
+    );
+
+  if (
+    !d ||
+    isNaN(
+      d.getTime()
+    )
+  ) {
+    return "";
+  }
+
+  const año =
+    d.getFullYear();
+
+  const mes =
+    String(
+      d.getMonth() + 1
+    ).padStart(
+      2,
+      "0"
+    );
+
+  const dia =
+    String(
+      d.getDate()
+    ).padStart(
+      2,
+      "0"
+    );
+
+  return `${año}-${mes}-${dia}`;
+
+}
+
+/* =========================================================
    BADGE ESTADO
-===================================================== */
+========================================================= */
 
 function crearBadgeEstado(
   estado
@@ -2297,9 +4014,9 @@ function crearBadgeEstado(
 
 }
 
-/* =====================================================
+/* =========================================================
    FORMATO DINERO
-===================================================== */
+========================================================= */
 
 function formatearDinero(
   valor
@@ -2325,9 +4042,9 @@ function formatearDinero(
 
 }
 
-/* =====================================================
+/* =========================================================
    OBTENER VALOR
-===================================================== */
+========================================================= */
 
 function obtenerValor(
   id
@@ -2348,9 +4065,9 @@ function obtenerValor(
 
 }
 
-/* =====================================================
+/* =========================================================
    ESCAPAR HTML
-===================================================== */
+========================================================= */
 
 function escaparHTML(
   valor
@@ -2382,9 +4099,9 @@ function escaparHTML(
 
 }
 
-/* =====================================================
+/* =========================================================
    ESCAPAR ATRIBUTO
-===================================================== */
+========================================================= */
 
 function escaparAtributo(
   valor
@@ -2400,9 +4117,9 @@ function escaparAtributo(
 
 }
 
-/* =====================================================
+/* =========================================================
    TOAST
-===================================================== */
+========================================================= */
 
 function mostrarToast(
   mensaje,

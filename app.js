@@ -2663,58 +2663,190 @@ function inicializarGastos() {
       "formGasto"
     );
 
-  if (!formulario) {
-    return;
+  if (formulario) {
+
+    formulario.addEventListener(
+      "submit",
+      async event => {
+
+        event.preventDefault();
+
+        await registrarGasto();
+
+      }
+    );
+
   }
 
-  formulario.addEventListener(
-    "submit",
-    async event => {
+  // Colocar fecha actual automáticamente
+  const fecha =
+    document.getElementById(
+      "gastoFecha"
+    );
 
-      event.preventDefault();
+  if (
+    fecha &&
+    !fecha.value
+  ) {
 
-      await registrarGasto();
+    const hoy =
+      new Date();
+
+    const yyyy =
+      hoy.getFullYear();
+
+    const mm =
+      String(
+        hoy.getMonth() + 1
+      ).padStart(2, "0");
+
+    const dd =
+      String(
+        hoy.getDate()
+      ).padStart(2, "0");
+
+    fecha.value =
+      `${yyyy}-${mm}-${dd}`;
+
+  }
+
+}
+
+
+/* =========================================================
+   LIMPIAR GASTO
+========================================================= */
+
+function limpiarGasto() {
+
+  const ids = [
+
+    "gastoFecha",
+    "gastoConcepto",
+    "gastoCategoria",
+    "gastoImporte",
+    "gastoObservaciones"
+
+  ];
+
+  ids.forEach(
+    id => {
+
+      const campo =
+        document.getElementById(
+          id
+        );
+
+      if (!campo) {
+        return;
+      }
+
+      if (
+        id ===
+        "gastoCategoria"
+      ) {
+
+        campo.value =
+          "General";
+
+      } else {
+
+        campo.value =
+          "";
+
+      }
 
     }
   );
 
+
+  // Volver a colocar fecha de hoy
+
+  const fecha =
+    document.getElementById(
+      "gastoFecha"
+    );
+
+  if (fecha) {
+
+    const hoy =
+      new Date();
+
+    const yyyy =
+      hoy.getFullYear();
+
+    const mm =
+      String(
+        hoy.getMonth() + 1
+      ).padStart(2, "0");
+
+    const dd =
+      String(
+        hoy.getDate()
+      ).padStart(2, "0");
+
+    fecha.value =
+      `${yyyy}-${mm}-${dd}`;
+
+  }
+
 }
+
+
+/* =========================================================
+   REGISTRAR GASTO
+========================================================= */
 
 async function registrarGasto() {
 
   const descripcion =
     obtenerValor(
-      "descripcionGasto"
+      "gastoConcepto"
     );
+
 
   const monto =
     Number(
       obtenerValor(
-        "montoGasto"
+        "gastoImporte"
       )
     );
 
+
   const categoria =
     obtenerValor(
-      "categoriaGasto"
+      "gastoCategoria"
     );
+
 
   const fecha =
     obtenerValor(
-      "fechaGasto"
+      "gastoFecha"
     ) ||
-    new Date().toISOString();
+    new Date()
+      .toISOString()
+      .split("T")[0];
+
+
+  const observaciones =
+    obtenerValor(
+      "gastoObservaciones"
+    );
+
+
+  /* VALIDACIONES */
 
   if (!descripcion) {
 
     mostrarToast(
-      "Ingresá una descripción para el gasto.",
+      "Ingresá un concepto para el gasto.",
       "error"
     );
 
     return;
 
   }
+
 
   if (
     !monto ||
@@ -2722,13 +2854,14 @@ async function registrarGasto() {
   ) {
 
     mostrarToast(
-      "Ingresá un monto válido.",
+      "Ingresá un importe válido.",
       "error"
     );
 
     return;
 
   }
+
 
   try {
 
@@ -2737,11 +2870,14 @@ async function registrarGasto() {
         API_URL,
         {
 
-          method: "POST",
+          method:
+            "POST",
 
           headers: {
+
             "Content-Type":
               "text/plain;charset=utf-8"
+
           },
 
           body:
@@ -2750,17 +2886,30 @@ async function registrarGasto() {
               action:
                 "registrarGasto",
 
-              descripcion,
-              monto,
-              categoria,
-              fecha
+              descripcion:
+                descripcion,
+
+              monto:
+                monto,
+
+              categoria:
+                categoria,
+
+              fecha:
+                fecha,
+
+              observaciones:
+                observaciones
 
             })
 
         }
       );
 
-    if (!respuesta.ok) {
+
+    if (
+      !respuesta.ok
+    ) {
 
       throw new Error(
         `Error HTTP ${respuesta.status}`
@@ -2768,10 +2917,14 @@ async function registrarGasto() {
 
     }
 
+
     const resultado =
       await respuesta.json();
 
-    if (!resultado.ok) {
+
+    if (
+      resultado.ok === false
+    ) {
 
       throw new Error(
         resultado.error ||
@@ -2780,33 +2933,49 @@ async function registrarGasto() {
 
     }
 
+
     mostrarToast(
       "Gasto registrado correctamente.",
       "success"
     );
 
+
+    /* LIMPIAR CACHE */
+
     limpiarCacheAPI();
 
-    const formulario =
-      document.getElementById(
-        "formGasto"
-      );
 
-    if (formulario) {
+    /* LIMPIAR FORMULARIO */
 
-      formulario.reset();
+    limpiarGasto();
 
-    }
+
+    /* RECARGAR TODOS LOS DATOS */
 
     await cargarDatos({
       force: true
     });
 
+
+    /* RECARGAR GASTOS */
+
+    if (
+      typeof cargarGastos ===
+      "function"
+    ) {
+
+      await cargarGastos();
+
+    }
+
+
   } catch (error) {
 
     console.error(
+      "Error registrando gasto:",
       error
     );
+
 
     mostrarToast(
       "Error al registrar gasto: " +
@@ -2818,6 +2987,11 @@ async function registrarGasto() {
 
 }
 
+
+/* =========================================================
+   RENDERIZAR GASTOS
+========================================================= */
+
 function renderizarGastos(
   lista
 ) {
@@ -2827,11 +3001,16 @@ function renderizarGastos(
       "listaGastos"
     );
 
+
   if (!contenedor) {
     return;
   }
 
-  if (!lista.length) {
+
+  if (
+    !Array.isArray(lista) ||
+    !lista.length
+  ) {
 
     contenedor.innerHTML = `
 
@@ -2857,16 +3036,24 @@ function renderizarGastos(
 
   }
 
+
   const ordenados =
     [...lista].sort(
-      (a, b) =>
+      (
+        a,
+        b
+      ) =>
+
         obtenerFechaObjeto(
           b.fecha
         ) -
+
         obtenerFechaObjeto(
           a.fecha
         )
+
     );
+
 
   contenedor.innerHTML = `
 
@@ -2876,14 +3063,26 @@ function renderizarGastos(
 
         <tr>
 
-          <th>FECHA</th>
-          <th>DESCRIPCIÓN</th>
-          <th>CATEGORÍA</th>
-          <th>MONTO</th>
+          <th>
+            FECHA
+          </th>
+
+          <th>
+            DESCRIPCIÓN
+          </th>
+
+          <th>
+            CATEGORÍA
+          </th>
+
+          <th>
+            MONTO
+          </th>
 
         </tr>
 
       </thead>
+
 
       <tbody>
 
@@ -2893,41 +3092,52 @@ function renderizarGastos(
           <tr>
 
             <td>
+
               ${escaparHTML(
                 formatearFecha(
                   gasto.fecha
                 )
               )}
+
             </td>
+
 
             <td>
 
               <strong>
+
                 ${escaparHTML(
                   gasto.descripcion ||
                   gasto.detalle ||
                   gasto.concepto ||
                   "-"
                 )}
+
               </strong>
 
             </td>
 
+
             <td>
+
               ${escaparHTML(
                 gasto.categoria ||
                 "-"
               )}
+
             </td>
+
 
             <td>
 
               <strong>
+
                 ${formatearDinero(
                   obtenerMontoGasto(
                     gasto
                   )
                 )}
+
               </strong>
 
             </td>
@@ -2944,7 +3154,6 @@ function renderizarGastos(
   `;
 
 }
-
 /* =========================================================
    BALANCE
 ========================================================= */

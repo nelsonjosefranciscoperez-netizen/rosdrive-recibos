@@ -1,112 +1,134 @@
+/******************************************************
+ * ROSDRIVE - APP WEB
+ * GitHub Pages ↔ Google Apps Script ↔ Google Sheets
+ ******************************************************/
+
 const API_URL =
   "https://script.google.com/macros/s/AKfycbwoLmnjN23zYnOU4rUJVe8Phvo5_Q5r15dqBrQb_AYIbPjhFBMAdTKoL14M_WNCkxum/exec";
 
-const API_CACHE_TTL = 120000;
 
-const SOCIOS = {
-  Erika: "",
-  Bruno: "",
-  Hector: ""
-};
-
-const PORCENTAJES = {
-  Erika: 45,
-  Bruno: 45,
-  Hector: 10
-};
+/* =====================================================
+   VARIABLES
+===================================================== */
 
 let ventas = [];
 let clientes = [];
 let recibos = [];
 let servicios = [];
-let gastos = [];
 
 let dashboardData = {};
+
 let ultimoRecibo = null;
-let ultimoBalance = null;
 
-const apiCache = new Map();
-const apiRequests = new Map();
 
-function limpiarCacheAPI() {
-  apiCache.clear();
-}
+/* =====================================================
+   INICIO
+===================================================== */
 
-function obtenerCacheAPI(action) {
-  const item = apiCache.get(action);
+document.addEventListener("DOMContentLoaded", () => {
 
-  if (!item) return null;
+  inicializarNavegacion();
 
-  if (Date.now() - item.time > API_CACHE_TTL) {
-    apiCache.delete(action);
-    return null;
-  }
+  actualizarFecha();
 
-  return item.data;
-}
+  actualizarTotal();
 
-document.addEventListener("DOMContentLoaded", async () => {
+  const servicio =
+    document.getElementById("servicio");
 
-  try {
+  if (servicio) {
 
-    inicializarNavegacion();
-
-    actualizarFecha();
-
-    actualizarTotal();
-
-    const servicio =
-      document.getElementById("servicio");
-
-    if (servicio) {
-
-      servicio.addEventListener(
-        "change",
-        actualizarPrecioServicio
-      );
-
-    }
-
-    const precio =
-      document.getElementById("precio");
-
-    if (precio) {
-
-      precio.addEventListener(
-        "input",
-        actualizarTotal
-      );
-
-    }
-
-    const cantidad =
-      document.getElementById("cantidad");
-
-    if (cantidad) {
-
-      cantidad.addEventListener(
-        "input",
-        actualizarTotal
-      );
-
-    }
-
-    inicializarBalance();
-
-    inicializarGastos();
-
-    await cargarDatos();
-
-  } catch (error) {
-
-    console.error(
-      "Error iniciando RosDrive:",
-      error
+    servicio.addEventListener(
+      "change",
+      actualizarPrecioServicio
     );
 
   }
 
+
+  const precio =
+    document.getElementById("precio");
+
+  if (precio) {
+
+    precio.addEventListener(
+      "input",
+      actualizarTotal
+    );
+
+  }
+
+
+  const cantidad =
+    document.getElementById("cantidad");
+
+  if (cantidad) {
+
+    cantidad.addEventListener(
+      "input",
+      actualizarTotal
+    );
+
+  }
+
+
+  mostrarMensajeCarga("Conectando con RosDrive...");
+
+  // La carga de Google Apps Script no puede bloquear
+  // indefinidamente la pantalla.
+  const cargaDatos = cargarDatos();
+
+  const tiempoMaximoCarga = new Promise(resolve => {
+    setTimeout(resolve, 3500);
+  });
+
+  Promise.race([cargaDatos, tiempoMaximoCarga])
+    .catch(error => {
+      console.error("Error cargando datos:", error);
+    })
+    .finally(() => {
+      ocultarPantallaCarga();
+    });
+
 });
+
+
+/* =====================================================
+   PANTALLA DE CARGA
+===================================================== */
+
+function mostrarMensajeCarga(mensaje) {
+
+  const elemento =
+    document.getElementById("loadingMessage");
+
+  if (elemento) {
+    elemento.textContent = mensaje;
+  }
+
+}
+
+function ocultarPantallaCarga() {
+
+  const pantalla =
+    document.getElementById("loadingScreen");
+
+  if (!pantalla) return;
+
+  pantalla.classList.add("hidden");
+
+  setTimeout(() => {
+    if (pantalla && pantalla.parentNode) {
+      pantalla.remove();
+    }
+  }, 550);
+
+}
+
+
+/* =====================================================
+   NAVEGACIÓN
+===================================================== */
 
 function inicializarNavegacion() {
 
@@ -129,6 +151,7 @@ function inicializarNavegacion() {
 
 }
 
+
 function mostrarSeccion(section) {
 
   document
@@ -139,6 +162,7 @@ function mostrarSeccion(section) {
 
     });
 
+
   document
     .querySelectorAll(".nav-item")
     .forEach(el => {
@@ -147,8 +171,10 @@ function mostrarSeccion(section) {
 
     });
 
+
   const destino =
     document.getElementById(section);
+
 
   if (destino) {
 
@@ -156,16 +182,19 @@ function mostrarSeccion(section) {
 
   }
 
+
   const boton =
     document.querySelector(
       `.nav-item[data-section="${section}"]`
     );
+
 
   if (boton) {
 
     boton.classList.add("active");
 
   }
+
 
   const titulos = {
 
@@ -192,31 +221,19 @@ function mostrarSeccion(section) {
     ventas: [
       "Ventas",
       "Historial de operaciones"
-    ],
-
-    gastos: [
-      "Gastos",
-      "Registrar y consultar gastos"
-    ],
-
-    balance: [
-      "Balance",
-      "Balance semanal y distribución"
     ]
 
   };
 
+
   if (titulos[section]) {
 
     const titulo =
-      document.getElementById(
-        "page-title"
-      );
+      document.getElementById("page-title");
 
     const subtitulo =
-      document.getElementById(
-        "page-subtitle"
-      );
+      document.getElementById("page-subtitle");
+
 
     if (titulo) {
 
@@ -224,6 +241,7 @@ function mostrarSeccion(section) {
         titulos[section][0];
 
     }
+
 
     if (subtitulo) {
 
@@ -234,13 +252,12 @@ function mostrarSeccion(section) {
 
   }
 
-  if (section === "balance") {
-
-    actualizarBalance();
-
-  }
-
 }
+
+
+/* =====================================================
+   FECHA
+===================================================== */
 
 function actualizarFecha() {
 
@@ -249,123 +266,142 @@ function actualizarFecha() {
       "fechaActual"
     );
 
-  if (!elemento) return;
 
-  const fecha = new Date();
+  if (!elemento) {
+
+    return;
+
+  }
+
+
+  const fecha =
+    new Date();
+
+
+  const opciones = {
+
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+
+  };
+
 
   elemento.textContent =
     fecha.toLocaleDateString(
       "es-AR",
-      {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric"
-      }
+      opciones
     );
 
 }
 
-async function consultarAPI(
-  action,
-  opciones = {}
-) {
 
-  const force =
-    opciones.force === true;
+/* =====================================================
+   API GET - OPTIMIZADA CON CACHE
+===================================================== */
 
-  if (!force) {
+const API_CACHE_TTL = 30000; // 30 segundos
+const apiCache = new Map();
+const apiRequests = new Map();
 
-    const cache =
-      obtenerCacheAPI(action);
+async function consultarAPI(action, opciones = {}) {
 
-    if (cache) {
+  const force = opciones.force === true;
+  const ahora = Date.now();
+  const cacheado = apiCache.get(action);
 
-      return cache;
+  if (!force && cacheado && (ahora - cacheado.time) < API_CACHE_TTL) {
+    return cacheado.data;
+  }
 
-    }
-
-    if (apiRequests.has(action)) {
-
-      return apiRequests.get(action);
-
-    }
-
+  // Si ya hay una petición en curso para la misma acción,
+  // reutilizamos esa petición en lugar de hacer otra.
+  if (!force && apiRequests.has(action)) {
+    return apiRequests.get(action);
   }
 
   const url =
     `${API_URL}?action=${encodeURIComponent(action)}`;
 
-  const promesa =
-    fetch(
-      url,
-      {
-        method: "GET",
-        cache: "no-store"
-      }
-    )
+  const promesa = fetch(url, {
+    method: "GET",
+    cache: "no-store"
+  })
+    .then(async respuesta => {
 
-    .then(
-      async respuesta => {
+      if (!respuesta.ok) {
 
-        if (!respuesta.ok) {
-
-          throw new Error(
-            `Error HTTP ${respuesta.status}`
-          );
-
-        }
-
-        const datos =
-          await respuesta.json();
-
-        if (datos.ok === false) {
-
-          throw new Error(
-            datos.error ||
-            "Error en la API"
-          );
-
-        }
-
-        apiCache.set(
-          action,
-          {
-            time: Date.now(),
-            data: datos
-          }
+        throw new Error(
+          `Error HTTP ${respuesta.status}`
         );
 
-        return datos;
+      }
+
+      const datos =
+        await respuesta.json();
+
+
+      if (datos.ok === false) {
+
+        throw new Error(
+          datos.error ||
+          "Error en la API"
+        );
 
       }
-    )
 
-    .finally(
-      () => {
 
-        apiRequests.delete(action);
+      apiCache.set(action, {
+        time: Date.now(),
+        data: datos
+      });
 
-      }
-    );
+
+      return datos;
+
+    })
+    .finally(() => {
+
+      apiRequests.delete(action);
+
+    });
+
 
   apiRequests.set(
     action,
     promesa
   );
 
+
   return promesa;
 
 }
 
-async function cargarDatos(
-  opciones = {}
-) {
+
+function limpiarCacheAPI() {
+
+  apiCache.clear();
+
+}
+
+
+/* =====================================================
+   CARGAR DATOS - TODAS LAS CONSULTAS EN PARALELO
+===================================================== */
+
+async function cargarDatos(opciones = {}) {
 
   const force =
     opciones.force === true;
 
+
   try {
+
+    mostrarMensajeCarga(
+      "Cargando información de RosDrive..."
+    );
+
 
     const resultados =
       await Promise.allSettled([
@@ -393,14 +429,12 @@ async function cargarDatos(
         consultarAPI(
           "servicios",
           { force }
-        ),
-
-        consultarAPI(
-          "gastos",
-          { force }
         )
 
       ]);
+
+
+    /* DASHBOARD */
 
     if (
       resultados[0].status ===
@@ -409,6 +443,7 @@ async function cargarDatos(
 
       dashboardData =
         resultados[0].value;
+
 
       actualizarDashboard(
         dashboardData
@@ -422,6 +457,9 @@ async function cargarDatos(
       );
 
     }
+
+
+    /* VENTAS */
 
     if (
       resultados[1].status ===
@@ -438,6 +476,7 @@ async function cargarDatos(
           ]
         );
 
+
       renderizarVentas(
         ventas
       );
@@ -450,6 +489,9 @@ async function cargarDatos(
       );
 
     }
+
+
+    /* CLIENTES */
 
     if (
       resultados[2].status ===
@@ -466,6 +508,7 @@ async function cargarDatos(
           ]
         );
 
+
       renderizarClientes(
         clientes
       );
@@ -478,6 +521,9 @@ async function cargarDatos(
       );
 
     }
+
+
+    /* RECIBOS */
 
     if (
       resultados[3].status ===
@@ -494,6 +540,7 @@ async function cargarDatos(
           ]
         );
 
+
       renderizarRecibos(
         recibos
       );
@@ -506,6 +553,9 @@ async function cargarDatos(
       );
 
     }
+
+
+    /* SERVICIOS */
 
     if (
       resultados[4].status ===
@@ -522,6 +572,7 @@ async function cargarDatos(
           ]
         );
 
+
       cargarServicios(
         servicios
       );
@@ -535,43 +586,14 @@ async function cargarDatos(
 
     }
 
-    if (
-      resultados[5].status ===
-      "fulfilled"
-    ) {
-
-      gastos =
-        normalizarLista(
-          resultados[5].value,
-          [
-            "gastos",
-            "data",
-            "resultado"
-          ]
-        );
-
-      renderizarGastos(
-        gastos
-      );
-
-    } else {
-
-      console.warn(
-        "No se pudieron cargar los gastos:",
-        resultados[5].reason
-      );
-
-      gastos = [];
-
-    }
 
     actualizarEstadisticasGenerales();
 
-    actualizarBalance();
 
   } catch (error) {
 
     console.error(error);
+
 
     mostrarToast(
       "No se pudieron cargar los datos",
@@ -582,42 +604,169 @@ async function cargarDatos(
 
 }
 
+
+/* =====================================================
+   NORMALIZAR LISTAS
+===================================================== */
+
 function normalizarLista(
   respuesta,
   posiblesPropiedades
 ) {
 
-  if (!respuesta) {
+  if (!respuesta) return [];
 
-    return [];
 
-  }
-
-  for (
-    const propiedad of posiblesPropiedades
-  ) {
-
-    if (
-      Array.isArray(
-        respuesta[propiedad]
-      )
-    ) {
-
-      return respuesta[propiedad];
-
-    }
-
-  }
-
+  // 1) Respuesta directamente como array.
   if (Array.isArray(respuesta)) {
 
     return respuesta;
 
   }
 
-  return [];
+
+  // 2) Buscar las propiedades habituales en cualquier nivel
+  //    (por ejemplo: { data: { ventas: [...] } }).
+
+  const clavesBuscadas =
+    posiblesPropiedades.map(
+      clave =>
+        String(clave)
+          .toLowerCase()
+    );
+
+
+  const visitados =
+    new Set();
+
+
+  function buscar(
+    obj,
+    profundidad = 0
+  ) {
+
+    if (
+      !obj ||
+      typeof obj !== "object"
+    ) {
+
+      return null;
+
+    }
+
+
+    if (
+      visitados.has(obj) ||
+      profundidad > 6
+    ) {
+
+      return null;
+
+    }
+
+
+    visitados.add(obj);
+
+
+    if (Array.isArray(obj)) {
+
+      return obj;
+
+    }
+
+
+    // Primero buscamos por nombre exacto de propiedad.
+
+    for (
+      const clave of Object.keys(obj)
+    ) {
+
+      const nombre =
+        String(clave)
+          .toLowerCase()
+          .trim();
+
+
+      if (
+        clavesBuscadas.includes(nombre)
+      ) {
+
+        if (
+          Array.isArray(
+            obj[clave]
+          )
+        ) {
+
+          return obj[clave];
+
+        }
+
+
+        const resultado =
+          buscar(
+            obj[clave],
+            profundidad + 1
+          );
+
+
+        if (resultado) return resultado;
+
+      }
+
+    }
+
+
+    // Después recorremos objetos anidados.
+
+    for (
+      const clave of Object.keys(obj)
+    ) {
+
+      const valor =
+        obj[clave];
+
+
+      if (
+        !valor ||
+        typeof valor !== "object"
+      ) {
+
+        continue;
+
+      }
+
+
+      const resultado =
+        buscar(
+          valor,
+          profundidad + 1
+        );
+
+
+      if (resultado) return resultado;
+
+    }
+
+
+    return null;
+
+  }
+
+
+  const resultado =
+    buscar(respuesta);
+
+
+  return Array.isArray(resultado)
+    ? resultado
+    : [];
 
 }
+
+
+/* =====================================================
+   DASHBOARD
+===================================================== */
 
 function actualizarDashboard(
   data
@@ -628,40 +777,48 @@ function actualizarDashboard(
       data.facturacion || 0
     );
 
+
   const recibosMes =
     Number(
       data.recibos || 0
     );
+
 
   const clientesTotal =
     Number(
       data.clientes || 0
     );
 
+
   const serviciosTotal =
     Number(
       data.servicios || 0
     );
+
 
   const statFacturacion =
     document.getElementById(
       "statFacturacion"
     );
 
+
   const statRecibos =
     document.getElementById(
       "statRecibos"
     );
+
 
   const statClientes =
     document.getElementById(
       "statClientes"
     );
 
+
   const statServicios =
     document.getElementById(
       "statServicios"
     );
+
 
   if (statFacturacion) {
 
@@ -672,12 +829,14 @@ function actualizarDashboard(
 
   }
 
+
   if (statRecibos) {
 
     statRecibos.textContent =
       recibosMes;
 
   }
+
 
   if (statClientes) {
 
@@ -686,6 +845,7 @@ function actualizarDashboard(
 
   }
 
+
   if (statServicios) {
 
     statServicios.textContent =
@@ -693,11 +853,17 @@ function actualizarDashboard(
 
   }
 
+
   renderizarUltimasVentas(
     data.ultimasVentas || []
   );
 
 }
+
+
+/* =====================================================
+   ÚLTIMAS VENTAS
+===================================================== */
 
 function renderizarUltimasVentas(
   lista
@@ -708,7 +874,13 @@ function renderizarUltimasVentas(
       "ultimasVentas"
     );
 
-  if (!contenedor) return;
+
+  if (!contenedor) {
+
+    return;
+
+  }
+
 
   if (
     !lista ||
@@ -739,6 +911,7 @@ function renderizarUltimasVentas(
 
   }
 
+
   contenedor.innerHTML = `
 
     <table class="data-table">
@@ -766,55 +939,41 @@ function renderizarUltimasVentas(
           <tr>
 
             <td>
-
               <strong>
-
                 ${escaparHTML(
                   venta.recibo || "-"
                 )}
-
               </strong>
-
             </td>
 
             <td>
-
               ${escaparHTML(
                 venta.fecha || "-"
               )}
-
             </td>
 
             <td>
-
               ${escaparHTML(
                 venta.cliente || "-"
               )}
-
             </td>
 
             <td>
-
               ${escaparHTML(
                 venta.servicio || "-"
               )}
-
             </td>
 
             <td>
-
               ${formatearDinero(
                 venta.total
               )}
-
             </td>
 
             <td>
-
               ${crearBadgeEstado(
                 venta.estado
               )}
-
             </td>
 
           </tr>
@@ -830,57 +989,70 @@ function renderizarUltimasVentas(
 
 }
 
+
+/* =====================================================
+   ESTADÍSTICAS GENERALES
+===================================================== */
+
 function actualizarEstadisticasGenerales() {
+
+  if (
+    dashboardData &&
+    dashboardData.ok
+  ) {
+
+    return;
+
+  }
+
 
   const statRecibos =
     document.getElementById(
       "statRecibos"
     );
 
+
   const statClientes =
     document.getElementById(
       "statClientes"
     );
+
 
   const statServicios =
     document.getElementById(
       "statServicios"
     );
 
+
   const statFacturacion =
     document.getElementById(
       "statFacturacion"
     );
 
-  if (
-    statRecibos &&
-    recibos.length
-  ) {
+
+  if (statRecibos) {
 
     statRecibos.textContent =
       recibos.length;
 
   }
 
-  if (
-    statClientes &&
-    clientes.length
-  ) {
+
+  if (statClientes) {
 
     statClientes.textContent =
       clientes.length;
 
   }
 
-  if (
-    statServicios &&
-    servicios.length
-  ) {
+
+  if (statServicios) {
 
     statServicios.textContent =
       servicios.length;
 
   }
+
 
   const total =
     ventas.reduce(
@@ -900,10 +1072,8 @@ function actualizarEstadisticasGenerales() {
       0
     );
 
-  if (
-    statFacturacion &&
-    !dashboardData.facturacion
-  ) {
+
+  if (statFacturacion) {
 
     statFacturacion.textContent =
       formatearDinero(
@@ -914,6 +1084,11 @@ function actualizarEstadisticasGenerales() {
 
 }
 
+
+/* =====================================================
+   SERVICIOS
+===================================================== */
+
 function cargarServicios(
   lista
 ) {
@@ -922,6 +1097,7 @@ function cargarServicios(
     document.getElementById(
       "servicio"
     );
+
 
   if (
     !select ||
@@ -932,6 +1108,7 @@ function cargarServicios(
 
   }
 
+
   select.innerHTML = `
 
     <option value="">
@@ -939,6 +1116,7 @@ function cargarServicios(
     </option>
 
   `;
+
 
   lista.forEach(
     servicio => {
@@ -949,6 +1127,7 @@ function cargarServicios(
         servicio.descripcion ||
         "";
 
+
       const precio =
         Number(
           servicio.precio ||
@@ -957,23 +1136,33 @@ function cargarServicios(
           0
         );
 
-      if (!nombre) return;
+
+      if (!nombre) {
+
+        return;
+
+      }
+
 
       const option =
         document.createElement(
           "option"
         );
 
+
       option.value =
         nombre;
+
 
       option.textContent =
         `${nombre} - ${formatearDinero(
           precio
         )}`;
 
+
       option.dataset.precio =
         precio;
+
 
       select.appendChild(
         option
@@ -984,6 +1173,11 @@ function cargarServicios(
 
 }
 
+
+/* =====================================================
+   PRECIO SERVICIO
+===================================================== */
+
 function actualizarPrecioServicio() {
 
   const select =
@@ -991,24 +1185,38 @@ function actualizarPrecioServicio() {
       "servicio"
     );
 
-  if (!select) return;
+
+  if (!select) {
+
+    return;
+
+  }
+
 
   const opcion =
     select.options[
       select.selectedIndex
     ];
 
-  if (!opcion) return;
+
+  if (!opcion) {
+
+    return;
+
+  }
+
 
   const precio =
     Number(
       opcion.dataset.precio || 0
     );
 
+
   const campoPrecio =
     document.getElementById(
       "precio"
     );
+
 
   if (campoPrecio) {
 
@@ -1017,9 +1225,15 @@ function actualizarPrecioServicio() {
 
   }
 
+
   actualizarTotal();
 
 }
+
+
+/* =====================================================
+   TOTAL
+===================================================== */
 
 function actualizarTotal() {
 
@@ -1028,22 +1242,31 @@ function actualizarTotal() {
       "precio"
     );
 
+
   const campoCantidad =
     document.getElementById(
       "cantidad"
     );
+
 
   const totalElemento =
     document.getElementById(
       "totalVenta"
     );
 
-  if (!campoPrecio) return;
+
+  if (!campoPrecio) {
+
+    return;
+
+  }
+
 
   const precio =
     Number(
       campoPrecio.value
     ) || 0;
+
 
   const cantidad =
     campoCantidad
@@ -1052,8 +1275,10 @@ function actualizarTotal() {
         ) || 1
       : 1;
 
+
   const total =
     precio * cantidad;
+
 
   if (totalElemento) {
 
@@ -1066,38 +1291,70 @@ function actualizarTotal() {
 
 }
 
+
+/* =====================================================
+   GENERAR VENTA
+===================================================== */
+
 async function generarVenta() {
 
   const cliente =
-    obtenerValor("cliente");
+    obtenerValor(
+      "cliente"
+    );
+
 
   const telefono =
-    obtenerValor("telefono");
+    obtenerValor(
+      "telefono"
+    );
+
 
   const direccion =
-    obtenerValor("direccion");
+    obtenerValor(
+      "direccion"
+    );
+
 
   const email =
-    obtenerValor("email");
+    obtenerValor(
+      "email"
+    );
+
 
   const servicio =
-    obtenerValor("servicio");
+    obtenerValor(
+      "servicio"
+    );
+
 
   const precio =
     Number(
-      obtenerValor("precio")
+      obtenerValor(
+        "precio"
+      )
     );
+
 
   const cantidad =
     Number(
-      obtenerValor("cantidad")
+      obtenerValor(
+        "cantidad"
+      )
     ) || 1;
 
+
   const formaPago =
-    obtenerValor("formaPago");
+    obtenerValor(
+      "formaPago"
+    );
+
 
   const estado =
-    obtenerValor("estado");
+    obtenerValor(
+      "estado"
+    );
+
 
   if (!cliente) {
 
@@ -1110,6 +1367,7 @@ async function generarVenta() {
 
   }
 
+
   if (!servicio) {
 
     mostrarToast(
@@ -1120,6 +1378,7 @@ async function generarVenta() {
     return;
 
   }
+
 
   if (
     !precio ||
@@ -1135,10 +1394,12 @@ async function generarVenta() {
 
   }
 
+
   const btn =
     document.getElementById(
       "btnGenerar"
     );
+
 
   if (btn) {
 
@@ -1149,15 +1410,19 @@ async function generarVenta() {
 
   }
 
+
   const datos = {
 
     cliente,
     telefono,
     direccion,
     email,
+
     servicio,
+
     precio,
     cantidad,
+
     formaPago,
     estado,
 
@@ -1165,6 +1430,7 @@ async function generarVenta() {
       new Date().toISOString()
 
   };
+
 
   try {
 
@@ -1190,6 +1456,7 @@ async function generarVenta() {
         }
       );
 
+
     if (!respuesta.ok) {
 
       throw new Error(
@@ -1198,8 +1465,10 @@ async function generarVenta() {
 
     }
 
+
     const resultado =
       await respuesta.json();
+
 
     if (!resultado.ok) {
 
@@ -1209,6 +1478,7 @@ async function generarVenta() {
       );
 
     }
+
 
     ultimoRecibo = {
 
@@ -1222,17 +1492,23 @@ async function generarVenta() {
         resultado.pdfUrl,
 
       cliente,
+
       telefono,
+
       servicio,
+
       formaPago
 
     };
+
 
     mostrarResultadoRecibo(
       resultado
     );
 
+
     limpiarFormulario();
+
 
     limpiarCacheAPI();
 
@@ -1240,14 +1516,17 @@ async function generarVenta() {
       force: true
     });
 
+
     mostrarToast(
       "Venta registrada correctamente",
       "success"
     );
 
+
   } catch (error) {
 
     console.error(error);
+
 
     mostrarToast(
       "Error: " +
@@ -1270,6 +1549,11 @@ async function generarVenta() {
 
 }
 
+
+/* =====================================================
+   RESULTADO RECIBO
+===================================================== */
+
 function mostrarResultadoRecibo(
   resultado
 ) {
@@ -1281,11 +1565,13 @@ function mostrarResultadoRecibo(
         : ""
     );
 
+
   const mensaje =
     crearMensajeWhatsApp(
       ultimoRecibo || {},
       resultado
     );
+
 
   const whatsappUrl =
     telefono
@@ -1298,10 +1584,12 @@ function mostrarResultadoRecibo(
           mensaje
         )}`;
 
+
   const resultadoElemento =
     document.getElementById(
       "resultadoRecibo"
     );
+
 
   if (resultadoElemento) {
 
@@ -1318,34 +1606,25 @@ function mostrarResultadoRecibo(
         </h3>
 
         <p>
-
           Recibo Nº
-
           <strong>
-
             ${escaparHTML(
               resultado.numero || "-"
             )}
-
           </strong>
-
         </p>
 
         <p>
-
           Total:
-
           <strong>
-
             ${formatearDinero(
               resultado.total
             )}
-
           </strong>
-
         </p>
 
       </div>
+
 
       <div
         class="recibo-actions"
@@ -1363,17 +1642,24 @@ function mostrarResultadoRecibo(
           rel="noopener"
           class="btn btn-primary"
         >
+
           📄 Ver PDF
+
         </a>
+
 
         <a
           href="${whatsappUrl}"
           target="_blank"
           rel="noopener"
           class="btn btn-whatsapp"
-          style="text-decoration:none;"
+          style="
+            text-decoration:none;
+          "
         >
+
           💬 Enviar por WhatsApp
+
         </a>
 
       </div>
@@ -1382,10 +1668,12 @@ function mostrarResultadoRecibo(
 
   }
 
+
   const modal =
     document.getElementById(
       "modalRecibo"
     );
+
 
   if (modal) {
 
@@ -1397,6 +1685,11 @@ function mostrarResultadoRecibo(
 
 }
 
+
+/* =====================================================
+   MENSAJE WHATSAPP
+===================================================== */
+
 function crearMensajeWhatsApp(
   datos,
   resultado
@@ -1407,27 +1700,33 @@ function crearMensajeWhatsApp(
     datos.numero ||
     "";
 
+
   const cliente =
     datos.cliente ||
     "cliente";
 
+
   const servicio =
     datos.servicio ||
     "";
+
 
   const total =
     resultado.total ||
     datos.total ||
     0;
 
+
   const formaPago =
     datos.formaPago ||
     "";
+
 
   const pdf =
     resultado.pdfUrl ||
     datos.pdfUrl ||
     "";
+
 
   return `Hola ${cliente} 👋
 
@@ -1450,6 +1749,11 @@ ${pdf}
 
 }
 
+
+/* =====================================================
+   NORMALIZAR WHATSAPP
+===================================================== */
+
 function normalizarWhatsApp(
   telefono
 ) {
@@ -1462,7 +1766,18 @@ function normalizarWhatsApp(
       ""
     );
 
-  if (!numero) return "";
+
+  if (!numero) {
+
+    return "";
+
+  }
+
+
+  /*
+   * Argentina:
+   * +54 9 341 ...
+   */
 
   if (
     numero.startsWith("549")
@@ -1471,6 +1786,11 @@ function normalizarWhatsApp(
     return numero;
 
   }
+
+
+  /*
+   * 54 + celular
+   */
 
   if (
     numero.startsWith("54")
@@ -1483,6 +1803,11 @@ function normalizarWhatsApp(
 
   }
 
+
+  /*
+   * Eliminar 0 inicial
+   */
+
   if (
     numero.startsWith("0")
   ) {
@@ -1491,6 +1816,11 @@ function normalizarWhatsApp(
       numero.substring(1);
 
   }
+
+
+  /*
+   * Eliminar 15 de celular
+   */
 
   if (
     numero.startsWith("15")
@@ -1501,6 +1831,7 @@ function normalizarWhatsApp(
 
   }
 
+
   return (
     "549" +
     numero
@@ -1508,12 +1839,18 @@ function normalizarWhatsApp(
 
 }
 
+
+/* =====================================================
+   CERRAR MODAL
+===================================================== */
+
 function cerrarModal() {
 
   const modal =
     document.getElementById(
       "modalRecibo"
     );
+
 
   if (modal) {
 
@@ -1525,14 +1862,22 @@ function cerrarModal() {
 
 }
 
+
+/* =====================================================
+   LIMPIAR FORMULARIO
+===================================================== */
+
 function limpiarFormulario() {
 
   const campos = [
+
     "cliente",
     "telefono",
     "direccion",
     "email"
+
   ];
+
 
   campos.forEach(
     id => {
@@ -1542,52 +1887,65 @@ function limpiarFormulario() {
           id
         );
 
+
       if (elemento) {
 
-        elemento.value = "";
+        elemento.value =
+          "";
 
       }
 
     }
   );
 
+
   const servicio =
     document.getElementById(
       "servicio"
     );
 
+
   if (servicio) {
 
-    servicio.value = "";
+    servicio.value =
+      "";
 
   }
+
 
   const precio =
     document.getElementById(
       "precio"
     );
 
+
   if (precio) {
 
-    precio.value = "0";
+    precio.value =
+      "0";
 
   }
+
 
   const cantidad =
     document.getElementById(
       "cantidad"
     );
 
+
   if (cantidad) {
 
-    cantidad.value = "1";
+    cantidad.value =
+      "1";
 
   }
+
 
   const formaPago =
     document.getElementById(
       "formaPago"
     );
+
 
   if (formaPago) {
 
@@ -1596,10 +1954,12 @@ function limpiarFormulario() {
 
   }
 
+
   const estado =
     document.getElementById(
       "estado"
     );
+
 
   if (estado) {
 
@@ -1608,9 +1968,15 @@ function limpiarFormulario() {
 
   }
 
+
   actualizarTotal();
 
 }
+
+
+/* =====================================================
+   RECIBOS - FILTRO
+===================================================== */
 
 function filtrarRecibos() {
 
@@ -1619,12 +1985,14 @@ function filtrarRecibos() {
       "buscarRecibo"
     );
 
+
   const texto =
     campo
       ? campo.value
           .toLowerCase()
           .trim()
       : "";
+
 
   const filtrados =
     recibos.filter(
@@ -1638,7 +2006,9 @@ function filtrarRecibos() {
             ""
           )
             .toLowerCase()
-            .includes(texto)
+            .includes(
+              texto
+            )
 
           ||
 
@@ -1647,18 +2017,26 @@ function filtrarRecibos() {
             ""
           )
             .toLowerCase()
-            .includes(texto)
+            .includes(
+              texto
+            )
 
         );
 
       }
     );
 
+
   renderizarRecibos(
     filtrados
   );
 
 }
+
+
+/* =====================================================
+   RECIBOS - RENDER
+===================================================== */
 
 function renderizarRecibos(
   lista
@@ -1669,7 +2047,13 @@ function renderizarRecibos(
       "listaRecibos"
     );
 
-  if (!contenedor) return;
+
+  if (!contenedor) {
+
+    return;
+
+  }
+
 
   if (!lista.length) {
 
@@ -1696,6 +2080,7 @@ function renderizarRecibos(
     return;
 
   }
+
 
   contenedor.innerHTML = `
 
@@ -1727,10 +2112,12 @@ function renderizarRecibos(
               recibo.recibo ||
               "";
 
+
             const pdf =
               recibo.pdf ||
               recibo.pdfUrl ||
               "";
+
 
             return `
 
@@ -1739,54 +2126,48 @@ function renderizarRecibos(
                 <td>
 
                   <strong>
-
                     ${escaparHTML(
                       numero || "-"
                     )}
-
                   </strong>
 
                 </td>
 
-                <td>
 
+                <td>
                   ${escaparHTML(
                     recibo.fecha || "-"
                   )}
-
                 </td>
 
-                <td>
 
+                <td>
                   ${escaparHTML(
                     recibo.cliente || "-"
                   )}
-
                 </td>
 
-                <td>
 
+                <td>
                   ${escaparHTML(
                     recibo.servicio || "-"
                   )}
-
                 </td>
 
-                <td>
 
+                <td>
                   ${formatearDinero(
                     recibo.total
                   )}
-
                 </td>
 
-                <td>
 
+                <td>
                   ${crearBadgeEstado(
                     recibo.estado
                   )}
-
                 </td>
+
 
                 <td>
 
@@ -1801,6 +2182,7 @@ function renderizarRecibos(
 
                     ${
                       pdf
+
                         ? `
 
                           <a
@@ -1809,12 +2191,16 @@ function renderizarRecibos(
                             rel="noopener"
                             class="pdf-link"
                           >
+
                             📄 Ver
+
                           </a>
 
                         `
+
                         : ""
                     }
+
 
                     <button
                       type="button"
@@ -1822,7 +2208,9 @@ function renderizarRecibos(
                       onclick="eliminarRecibo('${escaparAtributo(
                         numero
                       )}')"
-                      style="cursor:pointer;"
+                      style="
+                        cursor:pointer;
+                      "
                     >
 
                       🗑️ Eliminar
@@ -1848,6 +2236,11 @@ function renderizarRecibos(
 
 }
 
+
+/* =====================================================
+   ELIMINAR RECIBO
+===================================================== */
+
 async function eliminarRecibo(
   numero
 ) {
@@ -1863,13 +2256,20 @@ async function eliminarRecibo(
 
   }
 
+
   const confirmado =
     confirm(
       `¿Seguro que querés eliminar el recibo Nº ${numero}?\n\n` +
       `Se eliminará la venta del balance y el PDF asociado de Drive.`
     );
 
-  if (!confirmado) return;
+
+  if (!confirmado) {
+
+    return;
+
+  }
+
 
   try {
 
@@ -1877,6 +2277,7 @@ async function eliminarRecibo(
       "Eliminando recibo...",
       "success"
     );
+
 
     const respuesta =
       await fetch(
@@ -1906,6 +2307,7 @@ async function eliminarRecibo(
         }
       );
 
+
     if (!respuesta.ok) {
 
       throw new Error(
@@ -1914,8 +2316,10 @@ async function eliminarRecibo(
 
     }
 
+
     const resultado =
       await respuesta.json();
+
 
     if (!resultado.ok) {
 
@@ -1926,10 +2330,12 @@ async function eliminarRecibo(
 
     }
 
+
     mostrarToast(
       `Recibo Nº ${numero} eliminado correctamente`,
       "success"
     );
+
 
     limpiarCacheAPI();
 
@@ -1951,6 +2357,11 @@ async function eliminarRecibo(
 
 }
 
+
+/* =====================================================
+   CLIENTES - FILTRO
+===================================================== */
+
 function filtrarClientes() {
 
   const campo =
@@ -1958,12 +2369,14 @@ function filtrarClientes() {
       "buscarCliente"
     );
 
+
   const texto =
     campo
       ? campo.value
           .toLowerCase()
           .trim()
       : "";
+
 
   const filtrados =
     clientes.filter(
@@ -1976,7 +2389,9 @@ function filtrarClientes() {
             ""
           )
             .toLowerCase()
-            .includes(texto)
+            .includes(
+              texto
+            )
 
           ||
 
@@ -1985,7 +2400,9 @@ function filtrarClientes() {
             ""
           )
             .toLowerCase()
-            .includes(texto)
+            .includes(
+              texto
+            )
 
           ||
 
@@ -1994,18 +2411,26 @@ function filtrarClientes() {
             ""
           )
             .toLowerCase()
-            .includes(texto)
+            .includes(
+              texto
+            )
 
         );
 
       }
     );
 
+
   renderizarClientes(
     filtrados
   );
 
 }
+
+
+/* =====================================================
+   CLIENTES - RENDER
+===================================================== */
 
 function renderizarClientes(
   lista
@@ -2016,7 +2441,13 @@ function renderizarClientes(
       "listaClientes"
     );
 
-  if (!contenedor) return;
+
+  if (!contenedor) {
+
+    return;
+
+  }
+
 
   if (!lista.length) {
 
@@ -2044,6 +2475,7 @@ function renderizarClientes(
 
   }
 
+
   contenedor.innerHTML = `
 
     <table class="data-table">
@@ -2070,47 +2502,35 @@ function renderizarClientes(
           <tr>
 
             <td>
-
               <strong>
-
                 ${escaparHTML(
                   cliente.nombre || "-"
                 )}
-
               </strong>
-
             </td>
 
             <td>
-
               ${escaparHTML(
                 cliente.telefono || "-"
               )}
-
             </td>
 
             <td>
-
               ${escaparHTML(
                 cliente.direccion || "-"
               )}
-
             </td>
 
             <td>
-
               ${escaparHTML(
                 cliente.email || "-"
               )}
-
             </td>
 
             <td>
-
               ${formatearDinero(
                 cliente.total || 0
               )}
-
             </td>
 
           </tr>
@@ -2126,6 +2546,11 @@ function renderizarClientes(
 
 }
 
+
+/* =====================================================
+   VENTAS - FILTRO
+===================================================== */
+
 function filtrarVentas() {
 
   const campo =
@@ -2133,10 +2558,12 @@ function filtrarVentas() {
       "buscarVenta"
     );
 
+
   const filtroPago =
     document.getElementById(
       "filtroPago"
     );
+
 
   const texto =
     campo
@@ -2145,10 +2572,12 @@ function filtrarVentas() {
           .trim()
       : "";
 
+
   const pago =
     filtroPago
       ? filtroPago.value
       : "";
+
 
   const filtradas =
     ventas.filter(
@@ -2161,7 +2590,9 @@ function filtrarVentas() {
             ""
           )
             .toLowerCase()
-            .includes(texto)
+            .includes(
+              texto
+            )
 
           ||
 
@@ -2170,7 +2601,9 @@ function filtrarVentas() {
             ""
           )
             .toLowerCase()
-            .includes(texto)
+            .includes(
+              texto
+            )
 
           ||
 
@@ -2179,11 +2612,15 @@ function filtrarVentas() {
             ""
           )
             .toLowerCase()
-            .includes(texto);
+            .includes(
+              texto
+            );
+
 
         const coincidePago =
           !pago ||
           venta.pago === pago;
+
 
         return (
           coincideTexto &&
@@ -2193,11 +2630,17 @@ function filtrarVentas() {
       }
     );
 
+
   renderizarVentas(
     filtradas
   );
 
 }
+
+
+/* =====================================================
+   VENTAS - RENDER
+===================================================== */
 
 function renderizarVentas(
   lista
@@ -2208,7 +2651,13 @@ function renderizarVentas(
       "tablaVentas"
     );
 
-  if (!contenedor) return;
+
+  if (!contenedor) {
+
+    return;
+
+  }
+
 
   if (!lista.length) {
 
@@ -2235,6 +2684,7 @@ function renderizarVentas(
     return;
 
   }
+
 
   contenedor.innerHTML = `
 
@@ -2264,67 +2714,49 @@ function renderizarVentas(
           <tr>
 
             <td>
-
               <strong>
-
                 ${escaparHTML(
                   venta.recibo ||
                   venta.numero ||
                   "-"
                 )}
-
               </strong>
-
             </td>
 
             <td>
-
               ${escaparHTML(
                 venta.fecha || "-"
               )}
-
             </td>
 
             <td>
-
               ${escaparHTML(
                 venta.cliente || "-"
               )}
-
             </td>
 
             <td>
-
               ${escaparHTML(
                 venta.servicio || "-"
               )}
-
             </td>
 
             <td>
-
               ${formatearDinero(
                 venta.total
               )}
-
             </td>
 
             <td>
-
               ${escaparHTML(
-                venta.pago ||
-                venta.formaPago ||
-                "-"
+                venta.pago || "-"
               )}
-
             </td>
 
             <td>
-
               ${crearBadgeEstado(
                 venta.estado
               )}
-
             </td>
 
           </tr>
@@ -2340,1582 +2772,10 @@ function renderizarVentas(
 
 }
 
-function inicializarGastos() {
 
-  const formulario =
-    document.getElementById(
-      "formGasto"
-    );
-
-  if (!formulario) return;
-
-  formulario.addEventListener(
-    "submit",
-    async event => {
-
-      event.preventDefault();
-
-      await registrarGasto();
-
-    }
-  );
-
-}
-
-async function registrarGasto() {
-
-  const descripcion =
-    obtenerValor(
-      "descripcionGasto"
-    );
-
-  const monto =
-    Number(
-      obtenerValor(
-        "montoGasto"
-      )
-    );
-
-  const categoria =
-    obtenerValor(
-      "categoriaGasto"
-    );
-
-  const fecha =
-    obtenerValor(
-      "fechaGasto"
-    ) ||
-    new Date().toISOString();
-
-  if (!descripcion) {
-
-    mostrarToast(
-      "Ingresá una descripción para el gasto.",
-      "error"
-    );
-
-    return;
-
-  }
-
-  if (!monto || monto <= 0) {
-
-    mostrarToast(
-      "Ingresá un monto válido.",
-      "error"
-    );
-
-    return;
-
-  }
-
-  try {
-
-    const respuesta =
-      await fetch(
-        API_URL,
-        {
-
-          method: "POST",
-
-          headers: {
-
-            "Content-Type":
-              "text/plain;charset=utf-8"
-
-          },
-
-          body:
-            JSON.stringify({
-
-              action:
-                "registrarGasto",
-
-              descripcion,
-
-              monto,
-
-              categoria,
-
-              fecha
-
-            })
-
-        }
-      );
-
-    if (!respuesta.ok) {
-
-      throw new Error(
-        `Error HTTP ${respuesta.status}`
-      );
-
-    }
-
-    const resultado =
-      await respuesta.json();
-
-    if (!resultado.ok) {
-
-      throw new Error(
-        resultado.error ||
-        "No se pudo registrar el gasto."
-      );
-
-    }
-
-    mostrarToast(
-      "Gasto registrado correctamente.",
-      "success"
-    );
-
-    limpiarCacheAPI();
-
-    const formulario =
-      document.getElementById(
-        "formGasto"
-      );
-
-    if (formulario) {
-
-      formulario.reset();
-
-    }
-
-    await cargarDatos({
-      force: true
-    });
-
-  } catch (error) {
-
-    console.error(error);
-
-    mostrarToast(
-      "Error al registrar gasto: " +
-      error.message,
-      "error"
-    );
-
-  }
-
-}
-
-function renderizarGastos(
-  lista
-) {
-
-  const contenedor =
-    document.getElementById(
-      "listaGastos"
-    );
-
-  if (!contenedor) return;
-
-  if (!lista.length) {
-
-    contenedor.innerHTML = `
-
-      <div class="empty-state">
-
-        <div class="empty-icon">
-          💸
-        </div>
-
-        <h3>
-          No hay gastos registrados
-        </h3>
-
-        <p>
-          Los gastos que cargues aparecerán acá.
-        </p>
-
-      </div>
-
-    `;
-
-    return;
-
-  }
-
-  const ordenados =
-    [...lista].sort(
-      (a, b) =>
-        obtenerFechaObjeto(b.fecha) -
-        obtenerFechaObjeto(a.fecha)
-    );
-
-  contenedor.innerHTML = `
-
-    <table class="data-table">
-
-      <thead>
-
-        <tr>
-
-          <th>FECHA</th>
-          <th>DESCRIPCIÓN</th>
-          <th>CATEGORÍA</th>
-          <th>MONTO</th>
-
-        </tr>
-
-      </thead>
-
-      <tbody>
-
-        ${ordenados.map(
-          gasto => `
-
-          <tr>
-
-            <td>
-
-              ${escaparHTML(
-                formatearFecha(
-                  gasto.fecha
-                )
-              )}
-
-            </td>
-
-            <td>
-
-              <strong>
-
-                ${escaparHTML(
-                  gasto.descripcion ||
-                  gasto.detalle ||
-                  "-"
-                )}
-
-              </strong>
-
-            </td>
-
-            <td>
-
-              ${escaparHTML(
-                gasto.categoria ||
-                "-"
-              )}
-
-            </td>
-
-            <td>
-
-              <strong>
-
-                ${formatearDinero(
-                  gasto.monto ||
-                  gasto.total ||
-                  gasto.importe ||
-                  0
-                )}
-
-              </strong>
-
-            </td>
-
-          </tr>
-
-        `
-        ).join("")}
-
-      </tbody>
-
-    </table>
-
-  `;
-
-}
-
-function inicializarBalance() {
-
-  const fecha =
-    document.getElementById(
-      "fechaBalance"
-    );
-
-  if (fecha) {
-
-    if (!fecha.value) {
-
-      const hoy =
-        new Date();
-
-      fecha.value =
-        convertirFechaInput(
-          hoy
-        );
-
-    }
-
-    fecha.addEventListener(
-      "change",
-      actualizarBalance
-    );
-
-  }
-
-  const boton =
-    document.getElementById(
-      "btnActualizarBalance"
-    );
-
-  if (boton) {
-
-    boton.addEventListener(
-      "click",
-      () => {
-
-        actualizarBalance();
-
-      }
-    );
-
-  }
-
-}
-
-function obtenerRangoSemana(
-  fechaBase
-) {
-
-  const fecha =
-    new Date(
-      fechaBase
-    );
-
-  fecha.setHours(
-    0,
-    0,
-    0,
-    0
-  );
-
-  const dia =
-    fecha.getDay();
-
-  const diferencia =
-    dia === 0
-      ? 6
-      : dia - 1;
-
-  const inicio =
-    new Date(
-      fecha
-    );
-
-  inicio.setDate(
-    fecha.getDate() -
-    diferencia
-  );
-
-  inicio.setHours(
-    0,
-    0,
-    0,
-    0
-  );
-
-  const fin =
-    new Date(
-      inicio
-    );
-
-  fin.setDate(
-    inicio.getDate() +
-    6
-  );
-
-  fin.setHours(
-    23,
-    59,
-    59,
-    999
-  );
-
-  return {
-    inicio,
-    fin
-  };
-
-}
-
-function actualizarBalance() {
-
-  const fechaInput =
-    document.getElementById(
-      "fechaBalance"
-    );
-
-  let fechaBase =
-    new Date();
-
-  if (
-    fechaInput &&
-    fechaInput.value
-  ) {
-
-    const partes =
-      fechaInput.value.split("-");
-
-    if (partes.length === 3) {
-
-      fechaBase =
-        new Date(
-          Number(partes[0]),
-          Number(partes[1]) - 1,
-          Number(partes[2])
-        );
-
-    }
-
-  }
-
-  const rango =
-    obtenerRangoSemana(
-      fechaBase
-    );
-
-  const ventasSemana =
-    filtrarPorRangoFecha(
-      ventas,
-      rango.inicio,
-      rango.fin
-    );
-
-  const gastosSemana =
-    filtrarPorRangoFecha(
-      gastos,
-      rango.inicio,
-      rango.fin
-    );
-
-  const ingresos =
-    ventasSemana.reduce(
-      (
-        total,
-        venta
-      ) => {
-
-        return (
-          total +
-          obtenerMontoVenta(
-            venta
-          )
-        );
-
-      },
-      0
-    );
-
-  const totalGastos =
-    gastosSemana.reduce(
-      (
-        total,
-        gasto
-      ) => {
-
-        return (
-          total +
-          obtenerMontoGasto(
-            gasto
-          )
-        );
-
-      },
-      0
-    );
-
-  const disponible =
-    ingresos -
-    totalGastos;
-
-  const repartoErika =
-    disponible *
-    (
-      PORCENTAJES.Erika /
-      100
-    );
-
-  const repartoBruno =
-    disponible *
-    (
-      PORCENTAJES.Bruno /
-      100
-    );
-
-  const repartoHector =
-    disponible *
-    (
-      PORCENTAJES.Hector /
-      100
-    );
-
-  ultimoBalance = {
-
-    inicio:
-      rango.inicio,
-
-    fin:
-      rango.fin,
-
-    ingresos,
-
-    gastos:
-      totalGastos,
-
-    disponible,
-
-    Erika:
-      repartoErika,
-
-    Bruno:
-      repartoBruno,
-
-    Hector:
-      repartoHector,
-
-    ventas:
-      ventasSemana,
-
-    gastosLista:
-      gastosSemana
-
-  };
-
-  renderizarBalance(
-    ultimoBalance
-  );
-
-}
-
-function filtrarPorRangoFecha(
-  lista,
-  inicio,
-  fin
-) {
-
-  if (!Array.isArray(lista)) {
-
-    return [];
-
-  }
-
-  return lista.filter(
-    elemento => {
-
-      const fecha =
-        obtenerFechaObjeto(
-          elemento.fecha
-        );
-
-      if (
-        !fecha ||
-        isNaN(fecha.getTime())
-      ) {
-
-        return false;
-
-      }
-
-      return (
-        fecha >= inicio &&
-        fecha <= fin
-      );
-
-    }
-  );
-
-}
-
-function obtenerFechaObjeto(
-  valor
-) {
-
-  if (!valor) {
-
-    return new Date(0);
-
-  }
-
-  if (
-    valor instanceof Date
-  ) {
-
-    return new Date(
-      valor
-    );
-
-  }
-
-  const texto =
-    String(
-      valor
-    ).trim();
-
-  if (
-    /^\d{4}-\d{2}-\d{2}$/.test(
-      texto
-    )
-  ) {
-
-    const partes =
-      texto.split("-");
-
-    return new Date(
-      Number(partes[0]),
-      Number(partes[1]) - 1,
-      Number(partes[2])
-    );
-
-  }
-
-  if (
-    /^\d{2}\/\d{2}\/\d{4}$/.test(
-      texto
-    )
-  ) {
-
-    const partes =
-      texto.split("/");
-
-    return new Date(
-      Number(partes[2]),
-      Number(partes[1]) - 1,
-      Number(partes[0])
-    );
-
-  }
-
-  const fecha =
-    new Date(
-      texto
-    );
-
-  return fecha;
-
-}
-
-function obtenerMontoVenta(
-  venta
-) {
-
-  return Number(
-    venta.total ||
-    venta.importe ||
-    venta.monto ||
-    venta.precio ||
-    0
-  );
-
-}
-
-function obtenerMontoGasto(
-  gasto
-) {
-
-  return Number(
-    gasto.monto ||
-    gasto.total ||
-    gasto.importe ||
-    gasto.valor ||
-    0
-  );
-
-}
-
-function renderizarBalance(
-  balance
-) {
-
-  if (!balance) return;
-
-  const inicio =
-    formatearFecha(
-      balance.inicio
-    );
-
-  const fin =
-    formatearFecha(
-      balance.fin
-    );
-
-  const elementoRango =
-    document.getElementById(
-      "rangoBalance"
-    );
-
-  if (elementoRango) {
-
-    elementoRango.textContent =
-      `${inicio} al ${fin}`;
-
-  }
-
-  colocarTexto(
-    [
-      "balanceIngresos",
-      "totalIngresos",
-      "statIngresosBalance"
-    ],
-    formatearDinero(
-      balance.ingresos
-    )
-  );
-
-  colocarTexto(
-    [
-      "balanceGastos",
-      "totalGastos",
-      "statGastosBalance"
-    ],
-    formatearDinero(
-      balance.gastos
-    )
-  );
-
-  colocarTexto(
-    [
-      "balanceDisponible",
-      "totalDisponible",
-      "balanceNeto",
-      "statDisponibleBalance"
-    ],
-    formatearDinero(
-      balance.disponible
-    )
-  );
-
-  colocarTexto(
-    [
-      "balanceErika",
-      "totalErika",
-      "montoErika"
-    ],
-    formatearDinero(
-      balance.Erika
-    )
-  );
-
-  colocarTexto(
-    [
-      "balanceBruno",
-      "totalBruno",
-      "montoBruno"
-    ],
-    formatearDinero(
-      balance.Bruno
-    )
-  );
-
-  colocarTexto(
-    [
-      "balanceHector",
-      "totalHector",
-      "montoHector"
-    ],
-    formatearDinero(
-      balance.Hector
-    )
-  );
-
-  colocarTexto(
-    [
-      "porcentajeErika"
-    ],
-    `${PORCENTAJES.Erika}%`
-  );
-
-  colocarTexto(
-    [
-      "porcentajeBruno"
-    ],
-    `${PORCENTAJES.Bruno}%`
-  );
-
-  colocarTexto(
-    [
-      "porcentajeHector"
-    ],
-    `${PORCENTAJES.Hector}%`
-  );
-
-  renderizarVentasBalance(
-    balance.ventas
-  );
-
-  renderizarGastosBalance(
-    balance.gastosLista
-  );
-
-  configurarWhatsAppBalance(
-    balance
-  );
-
-}
-
-function colocarTexto(
-  ids,
-  valor
-) {
-
-  ids.forEach(
-    id => {
-
-      const elemento =
-        document.getElementById(
-          id
-        );
-
-      if (elemento) {
-
-        elemento.textContent =
-          valor;
-
-      }
-
-    }
-  );
-
-}
-
-function renderizarVentasBalance(
-  lista
-) {
-
-  const contenedor =
-    document.getElementById(
-      "ventasBalance"
-    );
-
-  if (!contenedor) return;
-
-  if (!lista.length) {
-
-    contenedor.innerHTML = `
-
-      <div class="empty-state">
-
-        <div class="empty-icon">
-          📈
-        </div>
-
-        <h3>
-          No hubo ventas esta semana
-        </h3>
-
-      </div>
-
-    `;
-
-    return;
-
-  }
-
-  contenedor.innerHTML = `
-
-    <table class="data-table">
-
-      <thead>
-
-        <tr>
-
-          <th>FECHA</th>
-          <th>CLIENTE</th>
-          <th>SERVICIO</th>
-          <th>TOTAL</th>
-
-        </tr>
-
-      </thead>
-
-      <tbody>
-
-        ${lista.map(
-          venta => `
-
-          <tr>
-
-            <td>
-
-              ${escaparHTML(
-                formatearFecha(
-                  venta.fecha
-                )
-              )}
-
-            </td>
-
-            <td>
-
-              ${escaparHTML(
-                venta.cliente ||
-                "-"
-              )}
-
-            </td>
-
-            <td>
-
-              ${escaparHTML(
-                venta.servicio ||
-                "-"
-              )}
-
-            </td>
-
-            <td>
-
-              <strong>
-
-                ${formatearDinero(
-                  obtenerMontoVenta(
-                    venta
-                  )
-                )}
-
-              </strong>
-
-            </td>
-
-          </tr>
-
-        `
-        ).join("")}
-
-      </tbody>
-
-    </table>
-
-  `;
-
-}
-
-function renderizarGastosBalance(
-  lista
-) {
-
-  const contenedor =
-    document.getElementById(
-      "gastosBalance"
-    );
-
-  if (!contenedor) return;
-
-  if (!lista.length) {
-
-    contenedor.innerHTML = `
-
-      <div class="empty-state">
-
-        <div class="empty-icon">
-          💸
-        </div>
-
-        <h3>
-          No hubo gastos esta semana
-        </h3>
-
-      </div>
-
-    `;
-
-    return;
-
-  }
-
-  contenedor.innerHTML = `
-
-    <table class="data-table">
-
-      <thead>
-
-        <tr>
-
-          <th>FECHA</th>
-          <th>DESCRIPCIÓN</th>
-          <th>CATEGORÍA</th>
-          <th>MONTO</th>
-
-        </tr>
-
-      </thead>
-
-      <tbody>
-
-        ${lista.map(
-          gasto => `
-
-          <tr>
-
-            <td>
-
-              ${escaparHTML(
-                formatearFecha(
-                  gasto.fecha
-                )
-              )}
-
-            </td>
-
-            <td>
-
-              ${escaparHTML(
-                gasto.descripcion ||
-                gasto.detalle ||
-                "-"
-              )}
-
-            </td>
-
-            <td>
-
-              ${escaparHTML(
-                gasto.categoria ||
-                "-"
-              )}
-
-            </td>
-
-            <td>
-
-              <strong>
-
-                ${formatearDinero(
-                  obtenerMontoGasto(
-                    gasto
-                  )
-                )}
-
-              </strong>
-
-            </td>
-
-          </tr>
-
-        `
-        ).join("")}
-
-      </tbody>
-
-    </table>
-
-  `;
-
-}
-
-function configurarWhatsAppBalance(
-  balance
-) {
-
-  const socios = [
-
-    {
-      nombre: "Erika",
-      monto: balance.Erika,
-      porcentaje: PORCENTAJES.Erika
-    },
-
-    {
-      nombre: "Bruno",
-      monto: balance.Bruno,
-      porcentaje: PORCENTAJES.Bruno
-    },
-
-    {
-      nombre: "Hector",
-      monto: balance.Hector,
-      porcentaje: PORCENTAJES.Hector
-    }
-
-  ];
-
-  socios.forEach(
-    socio => {
-
-      const numero =
-        obtenerNumeroSocio(
-          socio.nombre
-        );
-
-      const mensaje =
-        crearMensajeBalanceWhatsApp(
-          socio,
-          balance
-        );
-
-      const url =
-        numero
-
-          ? `https://wa.me/${numero}?text=${encodeURIComponent(
-              mensaje
-            )}`
-
-          : `https://wa.me/?text=${encodeURIComponent(
-              mensaje
-            )}`;
-
-      const ids = {
-
-        Erika: [
-          "whatsappErika",
-          "btnWhatsAppErika"
-        ],
-
-        Bruno: [
-          "whatsappBruno",
-          "btnWhatsAppBruno"
-        ],
-
-        Hector: [
-          "whatsappHector",
-          "btnWhatsAppHector"
-        ]
-
-      };
-
-      (
-        ids[socio.nombre] ||
-        []
-      ).forEach(
-        id => {
-
-          const elemento =
-            document.getElementById(
-              id
-            );
-
-          if (!elemento) return;
-
-          elemento.href =
-            url;
-
-          elemento.target =
-            "_blank";
-
-          elemento.rel =
-            "noopener";
-
-        }
-      );
-
-    }
-  );
-
-  const botonGeneral =
-    document.getElementById(
-      "whatsappBalanceGeneral"
-    );
-
-  if (botonGeneral) {
-
-    const mensaje =
-      crearMensajeBalanceGeneral(
-        balance
-      );
-
-    botonGeneral.href =
-      `https://wa.me/?text=${encodeURIComponent(
-        mensaje
-      )}`;
-
-    botonGeneral.target =
-      "_blank";
-
-  }
-
-}
-
-function obtenerNumeroSocio(
-  nombre
-) {
-
-  let numero =
-    SOCIOS[nombre] ||
-    "";
-
-  const ids = {
-
-    Erika: [
-      "whatsappErika",
-      "btnWhatsAppErika"
-    ],
-
-    Bruno: [
-      "whatsappBruno",
-      "btnWhatsAppBruno"
-    ],
-
-    Hector: [
-      "whatsappHector",
-      "btnWhatsAppHector"
-    ]
-
-  };
-
-  if (!numero) {
-
-    for (
-      const id of (
-        ids[nombre] ||
-        []
-      )
-    ) {
-
-      const elemento =
-        document.getElementById(
-          id
-        );
-
-      if (!elemento) continue;
-
-      const dataNumero =
-        elemento.dataset
-          ? elemento.dataset.whatsapp
-          : "";
-
-      if (dataNumero) {
-
-        numero =
-          dataNumero;
-
-        break;
-
-      }
-
-    }
-
-  }
-
-  return normalizarWhatsApp(
-    numero
-  );
-
-}
-
-function crearMensajeBalanceWhatsApp(
-  socio,
-  balance
-) {
-
-  return `Hola ${socio.nombre} 👋
-
-Te paso el balance semanal de RosDrive 🚗
-
-📅 Semana:
-${formatearFecha(
-    balance.inicio
-  )} al ${formatearFecha(
-    balance.fin
-  )}
-
-💰 Ingresos:
-${formatearDinero(
-    balance.ingresos
-  )}
-
-💸 Gastos:
-${formatearDinero(
-    balance.gastos
-  )}
-
-💵 Neto a repartir:
-${formatearDinero(
-    balance.disponible
-  )}
-
-📊 Tu porcentaje:
-${socio.porcentaje}%
-
-💰 Tu parte:
-${formatearDinero(
-    socio.monto
-  )}
-
-RosDrive 🚗`;
-
-}
-
-function crearMensajeBalanceGeneral(
-  balance
-) {
-
-  return `📊 BALANCE SEMANAL ROSDRIVE 🚗
-
-📅 ${formatearFecha(
-    balance.inicio
-  )} al ${formatearFecha(
-    balance.fin
-  )}
-
-💰 INGRESOS
-${formatearDinero(
-    balance.ingresos
-  )}
-
-💸 GASTOS
-${formatearDinero(
-    balance.gastos
-  )}
-
-💵 NETO
-${formatearDinero(
-    balance.disponible
-  )}
-
-👩 ERIKA - ${PORCENTAJES.Erika}%
-${formatearDinero(
-    balance.Erika
-  )}
-
-👨 BRUNO - ${PORCENTAJES.Bruno}%
-${formatearDinero(
-    balance.Bruno
-  )}
-
-👨 HÉCTOR - ${PORCENTAJES.Hector}%
-${formatearDinero(
-    balance.Hector
-  )}
-
-RosDrive 🚗`;
-
-}
-
-async function cerrarBalance() {
-
-  if (!ultimoBalance) {
-
-    actualizarBalance();
-
-  }
-
-  if (!ultimoBalance) {
-
-    mostrarToast(
-      "No hay un balance para cerrar.",
-      "error"
-    );
-
-    return;
-
-  }
-
-  const balance =
-    ultimoBalance;
-
-  const confirmado =
-    confirm(
-
-      `¿Cerrar el balance semanal?\n\n` +
-
-      `Ingresos: ${formatearDinero(
-        balance.ingresos
-      )}\n` +
-
-      `Gastos: ${formatearDinero(
-        balance.gastos
-      )}\n` +
-
-      `Neto: ${formatearDinero(
-        balance.disponible
-      )}\n\n` +
-
-      `Erika 45%: ${formatearDinero(
-        balance.Erika
-      )}\n` +
-
-      `Bruno 45%: ${formatearDinero(
-        balance.Bruno
-      )}\n` +
-
-      `Héctor 10%: ${formatearDinero(
-        balance.Hector
-      )}`
-
-    );
-
-  if (!confirmado) {
-
-    return;
-
-  }
-
-  try {
-
-    const respuesta =
-      await fetch(
-        API_URL,
-        {
-
-          method: "POST",
-
-          headers: {
-
-            "Content-Type":
-              "text/plain;charset=utf-8"
-
-          },
-
-          body:
-            JSON.stringify({
-
-              action:
-                "cerrarBalance",
-
-              inicio:
-                convertirFechaInput(
-                  balance.inicio
-                ),
-
-              fin:
-                convertirFechaInput(
-                  balance.fin
-                ),
-
-              ingresos:
-                balance.ingresos,
-
-              gastos:
-                balance.gastos,
-
-              neto:
-                balance.disponible,
-
-              Erika:
-                balance.Erika,
-
-              Bruno:
-                balance.Bruno,
-
-              Hector:
-                balance.Hector
-
-            })
-
-        }
-      );
-
-    if (!respuesta.ok) {
-
-      throw new Error(
-        `Error HTTP ${respuesta.status}`
-      );
-
-    }
-
-    const resultado =
-      await respuesta.json();
-
-    if (!resultado.ok) {
-
-      throw new Error(
-        resultado.error ||
-        "No se pudo cerrar el balance."
-      );
-
-    }
-
-    mostrarToast(
-      "Balance cerrado correctamente.",
-      "success"
-    );
-
-    limpiarCacheAPI();
-
-    await cargarDatos({
-      force: true
-    });
-
-  } catch (error) {
-
-    console.error(error);
-
-    mostrarToast(
-      "El balance fue calculado, pero no pudo guardarse: " +
-      error.message,
-      "error"
-    );
-
-  }
-
-}
-
-function formatearFecha(
-  valor
-) {
-
-  const fecha =
-    obtenerFechaObjeto(
-      valor
-    );
-
-  if (
-    !fecha ||
-    isNaN(
-      fecha.getTime()
-    )
-  ) {
-
-    return "-";
-
-  }
-
-  return fecha.toLocaleDateString(
-    "es-AR",
-    {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric"
-    }
-  );
-
-}
-
-function convertirFechaInput(
-  fecha
-) {
-
-  const d =
-    new Date(
-      fecha
-    );
-
-  if (
-    !d ||
-    isNaN(
-      d.getTime()
-    )
-  ) {
-
-    return "";
-
-  }
-
-  const año =
-    d.getFullYear();
-
-  const mes =
-    String(
-      d.getMonth() + 1
-    ).padStart(
-      2,
-      "0"
-    );
-
-  const dia =
-    String(
-      d.getDate()
-    ).padStart(
-      2,
-      "0"
-    );
-
-  return `${año}-${mes}-${dia}`;
-
-}
+/* =====================================================
+   BADGE ESTADO
+===================================================== */
 
 function crearBadgeEstado(
   estado
@@ -3927,6 +2787,7 @@ function crearBadgeEstado(
       "PAGADO"
     )
       .toUpperCase();
+
 
   if (
     valor === "PENDIENTE"
@@ -3944,6 +2805,7 @@ function crearBadgeEstado(
 
   }
 
+
   return `
 
     <span class="badge badge-paid">
@@ -3957,6 +2819,11 @@ function crearBadgeEstado(
   `;
 
 }
+
+
+/* =====================================================
+   FORMATO DINERO
+===================================================== */
 
 function formatearDinero(
   valor
@@ -3982,6 +2849,11 @@ function formatearDinero(
 
 }
 
+
+/* =====================================================
+   OBTENER VALOR
+===================================================== */
+
 function obtenerValor(
   id
 ) {
@@ -3991,17 +2863,24 @@ function obtenerValor(
       id
     );
 
+
   if (!elemento) {
 
     return "";
 
   }
 
+
   return String(
     elemento.value || ""
   ).trim();
 
 }
+
+
+/* =====================================================
+   ESCAPAR HTML
+===================================================== */
 
 function escaparHTML(
   valor
@@ -4033,6 +2912,11 @@ function escaparHTML(
 
 }
 
+
+/* =====================================================
+   ESCAPAR ATRIBUTOS
+===================================================== */
+
 function escaparAtributo(
   valor
 ) {
@@ -4047,6 +2931,11 @@ function escaparAtributo(
 
 }
 
+
+/* =====================================================
+   TOAST
+===================================================== */
+
 function mostrarToast(
   mensaje,
   tipo = "success"
@@ -4057,7 +2946,13 @@ function mostrarToast(
       "toast"
     );
 
+
   if (!toast) {
+
+    /*
+     * Fallback si todavía no existe
+     * el componente visual del toast.
+     */
 
     alert(mensaje);
 
@@ -4065,15 +2960,18 @@ function mostrarToast(
 
   }
 
+
   const icon =
     document.getElementById(
       "toastIcon"
     );
 
+
   const text =
     document.getElementById(
       "toastMessage"
     );
+
 
   if (icon) {
 
@@ -4084,6 +2982,7 @@ function mostrarToast(
 
   }
 
+
   if (text) {
 
     text.textContent =
@@ -4091,9 +2990,11 @@ function mostrarToast(
 
   }
 
+
   toast.classList.add(
     "show"
   );
+
 
   setTimeout(
     () => {

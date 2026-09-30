@@ -366,30 +366,21 @@ function mostrarPantallaCarga() {
 function ocultarPantallaCarga() {
 
   const loader =
-    document.getElementById(
-      "rosdriveLoader"
-    );
+    document.getElementById("rosdriveLoader");
 
   if (!loader) return;
 
-  loader.classList.add(
-    "oculto"
-  );
+  loader.style.opacity = "0";
+  loader.style.visibility = "hidden";
+  loader.style.pointerEvents = "none";
 
-  setTimeout(
-    () => {
+  setTimeout(() => {
 
-      if (loader.parentNode) {
+    if (loader && loader.parentNode) {
+      loader.parentNode.removeChild(loader);
+    }
 
-        loader.parentNode.removeChild(
-          loader
-        );
-
-      }
-
-    },
-    500
-  );
+  }, 500);
 
 }
 /* =========================================================
@@ -4297,3 +4288,18 @@ function mostrarToast(
   );
 
 }
+/* =========================================================
+   SEGURIDAD LOADER
+   Nunca dejar la pantalla de carga bloqueada
+========================================================= */
+
+setTimeout(() => {
+
+  const loader =
+    document.getElementById("rosdriveLoader");
+
+  if (loader) {
+    ocultarPantallaCarga();
+  }
+
+}, 15000);

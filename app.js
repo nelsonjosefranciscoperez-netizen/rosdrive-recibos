@@ -18,6 +18,8 @@ let servicios = [];
 
 let dashboardData = {};
 
+let ultimoRecibo = null;
+
 
 /* =====================================================
    INICIO
@@ -31,17 +33,44 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   actualizarTotal();
 
-  document
-    .getElementById("servicio")
-    .addEventListener("change", actualizarPrecioServicio);
+  const servicio =
+    document.getElementById("servicio");
 
-  document
-    .getElementById("precio")
-    .addEventListener("input", actualizarTotal);
+  if (servicio) {
 
-  document
-    .getElementById("cantidad")
-    .addEventListener("input", actualizarTotal);
+    servicio.addEventListener(
+      "change",
+      actualizarPrecioServicio
+    );
+
+  }
+
+
+  const precio =
+    document.getElementById("precio");
+
+  if (precio) {
+
+    precio.addEventListener(
+      "input",
+      actualizarTotal
+    );
+
+  }
+
+
+  const cantidad =
+    document.getElementById("cantidad");
+
+  if (cantidad) {
+
+    cantidad.addEventListener(
+      "input",
+      actualizarTotal
+    );
+
+  }
+
 
   await cargarDatos();
 
@@ -58,11 +87,16 @@ function inicializarNavegacion() {
     .querySelectorAll(".nav-item")
     .forEach(button => {
 
-      button.addEventListener("click", () => {
+      button.addEventListener(
+        "click",
+        () => {
 
-        mostrarSeccion(button.dataset.section);
+          mostrarSeccion(
+            button.dataset.section
+          );
 
-      });
+        }
+      );
 
     });
 
@@ -92,8 +126,11 @@ function mostrarSeccion(section) {
   const destino =
     document.getElementById(section);
 
+
   if (destino) {
+
     destino.classList.add("active");
+
   }
 
 
@@ -102,8 +139,11 @@ function mostrarSeccion(section) {
       `.nav-item[data-section="${section}"]`
     );
 
+
   if (boton) {
+
     boton.classList.add("active");
+
   }
 
 
@@ -139,11 +179,27 @@ function mostrarSeccion(section) {
 
   if (titulos[section]) {
 
-    document.getElementById("page-title").textContent =
-      titulos[section][0];
+    const titulo =
+      document.getElementById("page-title");
 
-    document.getElementById("page-subtitle").textContent =
-      titulos[section][1];
+    const subtitulo =
+      document.getElementById("page-subtitle");
+
+
+    if (titulo) {
+
+      titulo.textContent =
+        titulos[section][0];
+
+    }
+
+
+    if (subtitulo) {
+
+      subtitulo.textContent =
+        titulos[section][1];
+
+    }
 
   }
 
@@ -156,17 +212,38 @@ function mostrarSeccion(section) {
 
 function actualizarFecha() {
 
-  const fecha = new Date();
+  const elemento =
+    document.getElementById(
+      "fechaActual"
+    );
+
+
+  if (!elemento) {
+
+    return;
+
+  }
+
+
+  const fecha =
+    new Date();
+
 
   const opciones = {
+
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric"
+
   };
 
-  document.getElementById("fechaActual").textContent =
-    fecha.toLocaleDateString("es-AR", opciones);
+
+  elemento.textContent =
+    fecha.toLocaleDateString(
+      "es-AR",
+      opciones
+    );
 
 }
 
@@ -180,11 +257,16 @@ async function consultarAPI(action) {
   const url =
     `${API_URL}?action=${encodeURIComponent(action)}`;
 
+
   const respuesta =
-    await fetch(url, {
-      method: "GET",
-      cache: "no-store"
-    });
+    await fetch(
+      url,
+      {
+        method: "GET",
+        cache: "no-store"
+      }
+    );
+
 
   if (!respuesta.ok) {
 
@@ -194,16 +276,20 @@ async function consultarAPI(action) {
 
   }
 
+
   const datos =
     await respuesta.json();
+
 
   if (datos.ok === false) {
 
     throw new Error(
-      datos.error || "Error en la API"
+      datos.error ||
+      "Error en la API"
     );
 
   }
+
 
   return datos;
 
@@ -211,25 +297,24 @@ async function consultarAPI(action) {
 
 
 /* =====================================================
-   CARGAR TODOS LOS DATOS
+   CARGAR DATOS
 ===================================================== */
 
 async function cargarDatos() {
 
   try {
 
-    mostrarToast(
-      "Cargando información...",
-      "success"
-    );
-
-
-    /* DASHBOARD */
+    /*
+     * DASHBOARD
+     */
 
     try {
 
       dashboardData =
-        await consultarAPI("dashboard");
+        await consultarAPI(
+          "dashboard"
+        );
+
 
       actualizarDashboard(
         dashboardData
@@ -238,19 +323,24 @@ async function cargarDatos() {
     } catch (error) {
 
       console.error(
-        "Dashboard:",
+        "Error Dashboard:",
         error
       );
 
     }
 
 
-    /* VENTAS */
+    /*
+     * VENTAS
+     */
 
     try {
 
       const respuestaVentas =
-        await consultarAPI("ventas");
+        await consultarAPI(
+          "ventas"
+        );
+
 
       ventas =
         normalizarLista(
@@ -262,6 +352,7 @@ async function cargarDatos() {
           ]
         );
 
+
       renderizarVentas(
         ventas
       );
@@ -269,19 +360,24 @@ async function cargarDatos() {
     } catch (error) {
 
       console.error(
-        "Ventas:",
+        "Error Ventas:",
         error
       );
 
     }
 
 
-    /* CLIENTES */
+    /*
+     * CLIENTES
+     */
 
     try {
 
       const respuestaClientes =
-        await consultarAPI("clientes");
+        await consultarAPI(
+          "clientes"
+        );
+
 
       clientes =
         normalizarLista(
@@ -293,6 +389,7 @@ async function cargarDatos() {
           ]
         );
 
+
       renderizarClientes(
         clientes
       );
@@ -300,19 +397,24 @@ async function cargarDatos() {
     } catch (error) {
 
       console.error(
-        "Clientes:",
+        "Error Clientes:",
         error
       );
 
     }
 
 
-    /* RECIBOS */
+    /*
+     * RECIBOS
+     */
 
     try {
 
       const respuestaRecibos =
-        await consultarAPI("recibos");
+        await consultarAPI(
+          "recibos"
+        );
+
 
       recibos =
         normalizarLista(
@@ -324,6 +426,7 @@ async function cargarDatos() {
           ]
         );
 
+
       renderizarRecibos(
         recibos
       );
@@ -331,19 +434,24 @@ async function cargarDatos() {
     } catch (error) {
 
       console.error(
-        "Recibos:",
+        "Error Recibos:",
         error
       );
 
     }
 
 
-    /* SERVICIOS */
+    /*
+     * SERVICIOS
+     */
 
     try {
 
       const respuestaServicios =
-        await consultarAPI("servicios");
+        await consultarAPI(
+          "servicios"
+        );
+
 
       servicios =
         normalizarLista(
@@ -355,6 +463,7 @@ async function cargarDatos() {
           ]
         );
 
+
       cargarServicios(
         servicios
       );
@@ -362,7 +471,7 @@ async function cargarDatos() {
     } catch (error) {
 
       console.error(
-        "Servicios:",
+        "Error Servicios:",
         error
       );
 
@@ -386,7 +495,7 @@ async function cargarDatos() {
 
 
 /* =====================================================
-   NORMALIZAR RESPUESTAS
+   NORMALIZAR LISTAS
 ===================================================== */
 
 function normalizarLista(
@@ -411,7 +520,9 @@ function normalizarLista(
   }
 
 
-  if (Array.isArray(respuesta)) {
+  if (
+    Array.isArray(respuesta)
+  ) {
 
     return respuesta;
 
@@ -427,22 +538,27 @@ function normalizarLista(
    DASHBOARD
 ===================================================== */
 
-function actualizarDashboard(data) {
+function actualizarDashboard(
+  data
+) {
 
   const facturacion =
     Number(
       data.facturacion || 0
     );
 
+
   const recibosMes =
     Number(
       data.recibos || 0
     );
 
+
   const clientesTotal =
     Number(
       data.clientes || 0
     );
+
 
   const serviciosTotal =
     Number(
@@ -450,40 +566,66 @@ function actualizarDashboard(data) {
     );
 
 
-  document.getElementById(
-    "statFacturacion"
-  ).textContent =
-    formatearDinero(
-      facturacion
+  const statFacturacion =
+    document.getElementById(
+      "statFacturacion"
     );
 
 
-  document.getElementById(
-    "statRecibos"
-  ).textContent =
-    recibosMes;
+  const statRecibos =
+    document.getElementById(
+      "statRecibos"
+    );
 
 
-  document.getElementById(
-    "statClientes"
-  ).textContent =
-    clientesTotal;
+  const statClientes =
+    document.getElementById(
+      "statClientes"
+    );
 
 
-  document.getElementById(
-    "statServicios"
-  ).textContent =
-    serviciosTotal;
+  const statServicios =
+    document.getElementById(
+      "statServicios"
+    );
 
 
-  /* ÚLTIMAS VENTAS */
+  if (statFacturacion) {
 
-  const ultimas =
-    data.ultimasVentas || [];
+    statFacturacion.textContent =
+      formatearDinero(
+        facturacion
+      );
+
+  }
+
+
+  if (statRecibos) {
+
+    statRecibos.textContent =
+      recibosMes;
+
+  }
+
+
+  if (statClientes) {
+
+    statClientes.textContent =
+      clientesTotal;
+
+  }
+
+
+  if (statServicios) {
+
+    statServicios.textContent =
+      serviciosTotal;
+
+  }
 
 
   renderizarUltimasVentas(
-    ultimas
+    data.ultimasVentas || []
   );
 
 }
@@ -493,12 +635,21 @@ function actualizarDashboard(data) {
    ÚLTIMAS VENTAS
 ===================================================== */
 
-function renderizarUltimasVentas(lista) {
+function renderizarUltimasVentas(
+  lista
+) {
 
   const contenedor =
     document.getElementById(
       "ultimasVentas"
     );
+
+
+  if (!contenedor) {
+
+    return;
+
+  }
 
 
   if (
@@ -510,9 +661,13 @@ function renderizarUltimasVentas(lista) {
 
       <div class="empty-state">
 
-        <div class="empty-icon">📊</div>
+        <div class="empty-icon">
+          📊
+        </div>
 
-        <h3>Todavía no hay ventas cargadas</h3>
+        <h3>
+          Todavía no hay ventas cargadas
+        </h3>
 
         <p>
           Las ventas que generes desde la app aparecerán acá.
@@ -548,26 +703,35 @@ function renderizarUltimasVentas(lista) {
 
       <tbody>
 
-        ${lista.map(venta => `
+        ${lista.map(
+          venta => `
 
           <tr>
 
             <td>
               <strong>
-                ${venta.recibo || "-"}
+                ${escaparHTML(
+                  venta.recibo || "-"
+                )}
               </strong>
             </td>
 
             <td>
-              ${venta.fecha || "-"}
+              ${escaparHTML(
+                venta.fecha || "-"
+              )}
             </td>
 
             <td>
-              ${venta.cliente || "-"}
+              ${escaparHTML(
+                venta.cliente || "-"
+              )}
             </td>
 
             <td>
-              ${venta.servicio || "-"}
+              ${escaparHTML(
+                venta.servicio || "-"
+              )}
             </td>
 
             <td>
@@ -577,16 +741,15 @@ function renderizarUltimasVentas(lista) {
             </td>
 
             <td>
-
               ${crearBadgeEstado(
                 venta.estado
               )}
-
             </td>
 
           </tr>
 
-        `).join("")}
+        `
+        ).join("")}
 
       </tbody>
 
@@ -598,15 +761,10 @@ function renderizarUltimasVentas(lista) {
 
 
 /* =====================================================
-   ESTADÍSTICAS
+   ESTADÍSTICAS GENERALES
 ===================================================== */
 
 function actualizarEstadisticasGenerales() {
-
-  /*
-   * Si la API ya devolvió estos datos,
-   * no los reemplazamos.
-   */
 
   if (
     dashboardData &&
@@ -618,42 +776,81 @@ function actualizarEstadisticasGenerales() {
   }
 
 
-  document.getElementById(
-    "statRecibos"
-  ).textContent =
-    recibos.length;
+  const statRecibos =
+    document.getElementById(
+      "statRecibos"
+    );
 
 
-  document.getElementById(
-    "statClientes"
-  ).textContent =
-    clientes.length;
+  const statClientes =
+    document.getElementById(
+      "statClientes"
+    );
 
 
-  document.getElementById(
-    "statServicios"
-  ).textContent =
-    servicios.length;
+  const statServicios =
+    document.getElementById(
+      "statServicios"
+    );
+
+
+  const statFacturacion =
+    document.getElementById(
+      "statFacturacion"
+    );
+
+
+  if (statRecibos) {
+
+    statRecibos.textContent =
+      recibos.length;
+
+  }
+
+
+  if (statClientes) {
+
+    statClientes.textContent =
+      clientes.length;
+
+  }
+
+
+  if (statServicios) {
+
+    statServicios.textContent =
+      servicios.length;
+
+  }
 
 
   const total =
     ventas.reduce(
-      (suma, venta) => {
+      (
+        suma,
+        venta
+      ) => {
 
-        return suma +
+        return (
+          suma +
           Number(
             venta.total || 0
-          );
+          )
+        );
 
       },
       0
     );
 
 
-  document.getElementById(
-    "statFacturacion"
-  ).textContent =
-    formatearDinero(total);
+  if (statFacturacion) {
+
+    statFacturacion.textContent =
+      formatearDinero(
+        total
+      );
+
+  }
 
 }
 
@@ -662,7 +859,9 @@ function actualizarEstadisticasGenerales() {
    SERVICIOS
 ===================================================== */
 
-function cargarServicios(lista) {
+function cargarServicios(
+  lista
+) {
 
   const select =
     document.getElementById(
@@ -689,56 +888,64 @@ function cargarServicios(lista) {
   `;
 
 
-  lista.forEach(servicio => {
+  lista.forEach(
+    servicio => {
 
-    const nombre =
-      servicio.nombre ||
-      servicio.servicio ||
-      servicio.descripcion ||
-      "";
+      const nombre =
+        servicio.nombre ||
+        servicio.servicio ||
+        servicio.descripcion ||
+        "";
 
 
-    const precio =
-      Number(
-        servicio.precio ||
-        servicio.total ||
-        servicio.valor ||
-        0
+      const precio =
+        Number(
+          servicio.precio ||
+          servicio.total ||
+          servicio.valor ||
+          0
+        );
+
+
+      if (!nombre) {
+
+        return;
+
+      }
+
+
+      const option =
+        document.createElement(
+          "option"
+        );
+
+
+      option.value =
+        nombre;
+
+
+      option.textContent =
+        `${nombre} - ${formatearDinero(
+          precio
+        )}`;
+
+
+      option.dataset.precio =
+        precio;
+
+
+      select.appendChild(
+        option
       );
 
-
-    if (!nombre) {
-      return;
     }
-
-
-    const option =
-      document.createElement(
-        "option"
-      );
-
-
-    option.value =
-      nombre;
-
-    option.textContent =
-      `${nombre} - ${formatearDinero(precio)}`;
-
-    option.dataset.precio =
-      precio;
-
-
-    select.appendChild(
-      option
-    );
-
-  });
+  );
 
 }
 
 
 /* =====================================================
-   PRECIO DEL SERVICIO
+   PRECIO SERVICIO
 ===================================================== */
 
 function actualizarPrecioServicio() {
@@ -749,6 +956,13 @@ function actualizarPrecioServicio() {
     );
 
 
+  if (!select) {
+
+    return;
+
+  }
+
+
   const opcion =
     select.options[
       select.selectedIndex
@@ -756,7 +970,9 @@ function actualizarPrecioServicio() {
 
 
   if (!opcion) {
+
     return;
+
   }
 
 
@@ -766,10 +982,18 @@ function actualizarPrecioServicio() {
     );
 
 
-  document.getElementById(
-    "precio"
-  ).value =
-    precio;
+  const campoPrecio =
+    document.getElementById(
+      "precio"
+    );
+
+
+  if (campoPrecio) {
+
+    campoPrecio.value =
+      precio;
+
+  }
 
 
   actualizarTotal();
@@ -783,30 +1007,57 @@ function actualizarPrecioServicio() {
 
 function actualizarTotal() {
 
+  const campoPrecio =
+    document.getElementById(
+      "precio"
+    );
+
+
+  const campoCantidad =
+    document.getElementById(
+      "cantidad"
+    );
+
+
+  const totalElemento =
+    document.getElementById(
+      "totalVenta"
+    );
+
+
+  if (!campoPrecio) {
+
+    return;
+
+  }
+
+
   const precio =
     Number(
-      document.getElementById(
-        "precio"
-      ).value
+      campoPrecio.value
     ) || 0;
 
 
   const cantidad =
-    Number(
-      document.getElementById(
-        "cantidad"
-      ).value
-    ) || 1;
+    campoCantidad
+      ? Number(
+          campoCantidad.value
+        ) || 1
+      : 1;
 
 
   const total =
     precio * cantidad;
 
 
-  document.getElementById(
-    "totalVenta"
-  ).textContent =
-    formatearDinero(total);
+  if (totalElemento) {
+
+    totalElemento.textContent =
+      formatearDinero(
+        total
+      );
+
+  }
 
 }
 
@@ -818,61 +1069,61 @@ function actualizarTotal() {
 async function generarVenta() {
 
   const cliente =
-    document.getElementById(
+    obtenerValor(
       "cliente"
-    ).value.trim();
+    );
 
 
   const telefono =
-    document.getElementById(
+    obtenerValor(
       "telefono"
-    ).value.trim();
+    );
 
 
   const direccion =
-    document.getElementById(
+    obtenerValor(
       "direccion"
-    ).value.trim();
+    );
 
 
   const email =
-    document.getElementById(
+    obtenerValor(
       "email"
-    ).value.trim();
+    );
 
 
   const servicio =
-    document.getElementById(
+    obtenerValor(
       "servicio"
-    ).value;
+    );
 
 
   const precio =
     Number(
-      document.getElementById(
+      obtenerValor(
         "precio"
-      ).value
+      )
     );
 
 
   const cantidad =
     Number(
-      document.getElementById(
+      obtenerValor(
         "cantidad"
-      ).value
-    );
+      )
+    ) || 1;
 
 
   const formaPago =
-    document.getElementById(
+    obtenerValor(
       "formaPago"
-    ).value;
+    );
 
 
   const estado =
-    document.getElementById(
+    obtenerValor(
       "estado"
-    ).value;
+    );
 
 
   if (!cliente) {
@@ -920,10 +1171,14 @@ async function generarVenta() {
     );
 
 
-  btn.disabled = true;
+  if (btn) {
 
-  btn.textContent =
-    "⏳ Generando...";
+    btn.disabled = true;
+
+    btn.textContent =
+      "⏳ Generando...";
+
+  }
 
 
   const datos = {
@@ -957,12 +1212,16 @@ async function generarVenta() {
           method: "POST",
 
           headers: {
+
             "Content-Type":
               "text/plain;charset=utf-8"
+
           },
 
           body:
-            JSON.stringify(datos)
+            JSON.stringify(
+              datos
+            )
 
         }
       );
@@ -991,6 +1250,28 @@ async function generarVenta() {
     }
 
 
+    ultimoRecibo = {
+
+      numero:
+        resultado.numero,
+
+      total:
+        resultado.total,
+
+      pdfUrl:
+        resultado.pdfUrl,
+
+      cliente,
+
+      telefono,
+
+      servicio,
+
+      formaPago
+
+    };
+
+
     mostrarResultadoRecibo(
       resultado
     );
@@ -998,8 +1279,6 @@ async function generarVenta() {
 
     limpiarFormulario();
 
-
-    /* RECARGAR DATOS */
 
     await cargarDatos();
 
@@ -1022,10 +1301,14 @@ async function generarVenta() {
 
   } finally {
 
-    btn.disabled = false;
+    if (btn) {
 
-    btn.textContent =
-      "🧾 Generar recibo";
+      btn.disabled = false;
+
+      btn.textContent =
+        "🧾 Generar recibo";
+
+    }
 
   }
 
@@ -1033,54 +1316,313 @@ async function generarVenta() {
 
 
 /* =====================================================
-   MODAL RECIBO
+   RESULTADO RECIBO
 ===================================================== */
 
 function mostrarResultadoRecibo(
   resultado
 ) {
 
-  document.getElementById(
-    "resultadoRecibo"
-  ).innerHTML =
-
-    `Recibo <strong>Nº ${
-      resultado.numero || "-"
-    }</strong><br>
-    
-    Total: <strong>${
-      formatearDinero(
-        resultado.total
-      )
-    }</strong>`;
+  const telefono =
+    normalizarWhatsApp(
+      ultimoRecibo
+        ? ultimoRecibo.telefono
+        : ""
+    );
 
 
-  document.getElementById(
-    "btnVerPDF"
-  ).href =
-    resultado.pdfUrl || "#";
+  const mensaje =
+    crearMensajeWhatsApp(
+      ultimoRecibo || {},
+      resultado
+    );
 
 
-  document
-    .getElementById(
+  const whatsappUrl =
+    telefono
+
+      ? `https://wa.me/${telefono}?text=${encodeURIComponent(
+          mensaje
+        )}`
+
+      : `https://wa.me/?text=${encodeURIComponent(
+          mensaje
+        )}`;
+
+
+  const resultadoElemento =
+    document.getElementById(
+      "resultadoRecibo"
+    );
+
+
+  if (resultadoElemento) {
+
+    resultadoElemento.innerHTML = `
+
+      <div class="recibo-success">
+
+        <div class="success-icon">
+          ✓
+        </div>
+
+        <h3>
+          ¡Recibo generado correctamente!
+        </h3>
+
+        <p>
+          Recibo Nº
+          <strong>
+            ${escaparHTML(
+              resultado.numero || "-"
+            )}
+          </strong>
+        </p>
+
+        <p>
+          Total:
+          <strong>
+            ${formatearDinero(
+              resultado.total
+            )}
+          </strong>
+        </p>
+
+      </div>
+
+
+      <div
+        class="recibo-actions"
+        style="
+          display:flex;
+          gap:10px;
+          flex-wrap:wrap;
+          margin-top:20px;
+        "
+      >
+
+        <a
+          href="${resultado.pdfUrl || "#"}"
+          target="_blank"
+          rel="noopener"
+          class="btn btn-primary"
+        >
+
+          📄 Ver PDF
+
+        </a>
+
+
+        <a
+          href="${whatsappUrl}"
+          target="_blank"
+          rel="noopener"
+          class="btn btn-whatsapp"
+          style="
+            text-decoration:none;
+          "
+        >
+
+          💬 Enviar por WhatsApp
+
+        </a>
+
+      </div>
+
+    `;
+
+  }
+
+
+  const modal =
+    document.getElementById(
       "modalRecibo"
-    )
-    .classList.add(
+    );
+
+
+  if (modal) {
+
+    modal.classList.add(
       "show"
     );
+
+  }
 
 }
 
 
+/* =====================================================
+   MENSAJE WHATSAPP
+===================================================== */
+
+function crearMensajeWhatsApp(
+  datos,
+  resultado
+) {
+
+  const numero =
+    resultado.numero ||
+    datos.numero ||
+    "";
+
+
+  const cliente =
+    datos.cliente ||
+    "cliente";
+
+
+  const servicio =
+    datos.servicio ||
+    "";
+
+
+  const total =
+    resultado.total ||
+    datos.total ||
+    0;
+
+
+  const formaPago =
+    datos.formaPago ||
+    "";
+
+
+  const pdf =
+    resultado.pdfUrl ||
+    datos.pdfUrl ||
+    "";
+
+
+  return `Hola ${cliente} 👋
+
+Te enviamos tu recibo de RosDrive 🚗
+
+🧾 Recibo Nº ${numero}
+
+🚘 Servicio: ${servicio}
+
+💰 Total: ${formatearDinero(
+    total
+  )}
+
+💳 Forma de pago: ${formaPago}
+
+📄 Recibo:
+${pdf}
+
+¡Gracias por confiar en RosDrive!`;
+}
+
+
+/* =====================================================
+   NORMALIZAR WHATSAPP
+===================================================== */
+
+function normalizarWhatsApp(
+  telefono
+) {
+
+  let numero =
+    String(
+      telefono || ""
+    ).replace(
+      /\D/g,
+      ""
+    );
+
+
+  if (!numero) {
+
+    return "";
+
+  }
+
+
+  /*
+   * Argentina:
+   * +54 9 341 ...
+   */
+
+  if (
+    numero.startsWith("549")
+  ) {
+
+    return numero;
+
+  }
+
+
+  /*
+   * 54 + celular
+   */
+
+  if (
+    numero.startsWith("54")
+  ) {
+
+    return (
+      "549" +
+      numero.substring(2)
+    );
+
+  }
+
+
+  /*
+   * Eliminar 0 inicial
+   */
+
+  if (
+    numero.startsWith("0")
+  ) {
+
+    numero =
+      numero.substring(1);
+
+  }
+
+
+  /*
+   * Eliminar 15 de celular
+   */
+
+  if (
+    numero.startsWith("15")
+  ) {
+
+    numero =
+      numero.substring(2);
+
+  }
+
+
+  return (
+    "549" +
+    numero
+  );
+
+}
+
+
+/* =====================================================
+   CERRAR MODAL
+===================================================== */
+
 function cerrarModal() {
 
-  document
-    .getElementById(
+  const modal =
+    document.getElementById(
       "modalRecibo"
-    )
-    .classList.remove(
+    );
+
+
+  if (modal) {
+
+    modal.classList.remove(
       "show"
     );
+
+  }
 
 }
 
@@ -1091,51 +1633,104 @@ function cerrarModal() {
 
 function limpiarFormulario() {
 
-  document.getElementById(
-    "cliente"
-  ).value = "";
+  const campos = [
 
-
-  document.getElementById(
-    "telefono"
-  ).value = "";
-
-
-  document.getElementById(
-    "direccion"
-  ).value = "";
-
-
-  document.getElementById(
+    "cliente",
+    "telefono",
+    "direccion",
     "email"
-  ).value = "";
+
+  ];
 
 
-  document.getElementById(
-    "servicio"
-  ).value = "";
+  campos.forEach(
+    id => {
+
+      const elemento =
+        document.getElementById(
+          id
+        );
 
 
-  document.getElementById(
-    "precio"
-  ).value = "0";
+      if (elemento) {
+
+        elemento.value =
+          "";
+
+      }
+
+    }
+  );
 
 
-  document.getElementById(
-    "cantidad"
-  ).value = "1";
+  const servicio =
+    document.getElementById(
+      "servicio"
+    );
 
 
-  document.getElementById(
-    "formaPago"
-  ).value =
-    "Transferencia";
+  if (servicio) {
+
+    servicio.value =
+      "";
+
+  }
 
 
-  document.getElementById(
-    "estado"
-  ).value =
-    "PAGADO";
+  const precio =
+    document.getElementById(
+      "precio"
+    );
+
+
+  if (precio) {
+
+    precio.value =
+      "0";
+
+  }
+
+
+  const cantidad =
+    document.getElementById(
+      "cantidad"
+    );
+
+
+  if (cantidad) {
+
+    cantidad.value =
+      "1";
+
+  }
+
+
+  const formaPago =
+    document.getElementById(
+      "formaPago"
+    );
+
+
+  if (formaPago) {
+
+    formaPago.value =
+      "Transferencia";
+
+  }
+
+
+  const estado =
+    document.getElementById(
+      "estado"
+    );
+
+
+  if (estado) {
+
+    estado.value =
+      "PAGADO";
+
+  }
 
 
   actualizarTotal();
@@ -1144,17 +1739,23 @@ function limpiarFormulario() {
 
 
 /* =====================================================
-   RECIBOS
+   RECIBOS - FILTRO
 ===================================================== */
 
 function filtrarRecibos() {
 
-  const texto =
+  const campo =
     document.getElementById(
       "buscarRecibo"
-    ).value
-      .toLowerCase()
-      .trim();
+    );
+
+
+  const texto =
+    campo
+      ? campo.value
+          .toLowerCase()
+          .trim()
+      : "";
 
 
   const filtrados =
@@ -1164,18 +1765,25 @@ function filtrarRecibos() {
         return (
 
           String(
-            recibo.numero || ""
+            recibo.numero ||
+            recibo.recibo ||
+            ""
           )
             .toLowerCase()
-            .includes(texto)
+            .includes(
+              texto
+            )
 
           ||
 
           String(
-            recibo.cliente || ""
+            recibo.cliente ||
+            ""
           )
             .toLowerCase()
-            .includes(texto)
+            .includes(
+              texto
+            )
 
         );
 
@@ -1190,6 +1798,10 @@ function filtrarRecibos() {
 }
 
 
+/* =====================================================
+   RECIBOS - RENDER
+===================================================== */
+
 function renderizarRecibos(
   lista
 ) {
@@ -1198,6 +1810,13 @@ function renderizarRecibos(
     document.getElementById(
       "listaRecibos"
     );
+
+
+  if (!contenedor) {
+
+    return;
+
+  }
 
 
   if (!lista.length) {
@@ -1241,7 +1860,7 @@ function renderizarRecibos(
           <th>SERVICIO</th>
           <th>TOTAL</th>
           <th>ESTADO</th>
-          <th>PDF</th>
+          <th>ACCIONES</th>
 
         </tr>
 
@@ -1250,62 +1869,127 @@ function renderizarRecibos(
       <tbody>
 
         ${lista.map(
-          recibo => `
+          recibo => {
 
-          <tr>
+            const numero =
+              recibo.numero ||
+              recibo.recibo ||
+              "";
 
-            <td>
-              <strong>
-                ${recibo.numero || "-"}
-              </strong>
-            </td>
 
-            <td>
-              ${recibo.fecha || "-"}
-            </td>
+            const pdf =
+              recibo.pdf ||
+              recibo.pdfUrl ||
+              "";
 
-            <td>
-              ${recibo.cliente || "-"}
-            </td>
 
-            <td>
-              ${recibo.servicio || "-"}
-            </td>
+            return `
 
-            <td>
-              ${formatearDinero(
-                recibo.total
-              )}
-            </td>
+              <tr>
 
-            <td>
-              ${crearBadgeEstado(
-                recibo.estado
-              )}
-            </td>
+                <td>
 
-            <td>
+                  <strong>
+                    ${escaparHTML(
+                      numero || "-"
+                    )}
+                  </strong>
 
-              ${
-                recibo.pdf
-                  ? `
-                    <a
-                      href="${recibo.pdf}"
-                      target="_blank"
-                      class="pdf-link">
+                </td>
 
-                      📄 Ver
 
-                    </a>
-                  `
-                  : "-"
-              }
+                <td>
+                  ${escaparHTML(
+                    recibo.fecha || "-"
+                  )}
+                </td>
 
-            </td>
 
-          </tr>
+                <td>
+                  ${escaparHTML(
+                    recibo.cliente || "-"
+                  )}
+                </td>
 
-        `
+
+                <td>
+                  ${escaparHTML(
+                    recibo.servicio || "-"
+                  )}
+                </td>
+
+
+                <td>
+                  ${formatearDinero(
+                    recibo.total
+                  )}
+                </td>
+
+
+                <td>
+                  ${crearBadgeEstado(
+                    recibo.estado
+                  )}
+                </td>
+
+
+                <td>
+
+                  <div
+                    class="recibo-actions-small"
+                    style="
+                      display:flex;
+                      gap:8px;
+                      flex-wrap:wrap;
+                    "
+                  >
+
+                    ${
+                      pdf
+
+                        ? `
+
+                          <a
+                            href="${pdf}"
+                            target="_blank"
+                            rel="noopener"
+                            class="pdf-link"
+                          >
+
+                            📄 Ver
+
+                          </a>
+
+                        `
+
+                        : ""
+                    }
+
+
+                    <button
+                      type="button"
+                      class="btn-delete"
+                      onclick="eliminarRecibo('${escaparAtributo(
+                        numero
+                      )}')"
+                      style="
+                        cursor:pointer;
+                      "
+                    >
+
+                      🗑️ Eliminar
+
+                    </button>
+
+                  </div>
+
+                </td>
+
+              </tr>
+
+            `;
+
+          }
         ).join("")}
 
       </tbody>
@@ -1318,17 +2002,140 @@ function renderizarRecibos(
 
 
 /* =====================================================
-   CLIENTES
+   ELIMINAR RECIBO
+===================================================== */
+
+async function eliminarRecibo(
+  numero
+) {
+
+  if (!numero) {
+
+    mostrarToast(
+      "No se encontró el número del recibo.",
+      "error"
+    );
+
+    return;
+
+  }
+
+
+  const confirmado =
+    confirm(
+      `¿Seguro que querés eliminar el recibo Nº ${numero}?\n\n` +
+      `Se eliminará la venta del balance y el PDF asociado de Drive.`
+    );
+
+
+  if (!confirmado) {
+
+    return;
+
+  }
+
+
+  try {
+
+    mostrarToast(
+      "Eliminando recibo...",
+      "success"
+    );
+
+
+    const respuesta =
+      await fetch(
+        API_URL,
+        {
+
+          method: "POST",
+
+          headers: {
+
+            "Content-Type":
+              "text/plain;charset=utf-8"
+
+          },
+
+          body:
+            JSON.stringify({
+
+              action:
+                "eliminar",
+
+              numero:
+                numero
+
+            })
+
+        }
+      );
+
+
+    if (!respuesta.ok) {
+
+      throw new Error(
+        `Error HTTP ${respuesta.status}`
+      );
+
+    }
+
+
+    const resultado =
+      await respuesta.json();
+
+
+    if (!resultado.ok) {
+
+      throw new Error(
+        resultado.error ||
+        "No se pudo eliminar el recibo."
+      );
+
+    }
+
+
+    mostrarToast(
+      `Recibo Nº ${numero} eliminado correctamente`,
+      "success"
+    );
+
+
+    await cargarDatos();
+
+  } catch (error) {
+
+    console.error(error);
+
+    mostrarToast(
+      "Error al eliminar: " +
+      error.message,
+      "error"
+    );
+
+  }
+
+}
+
+
+/* =====================================================
+   CLIENTES - FILTRO
 ===================================================== */
 
 function filtrarClientes() {
 
-  const texto =
+  const campo =
     document.getElementById(
       "buscarCliente"
-    ).value
-      .toLowerCase()
-      .trim();
+    );
+
+
+  const texto =
+    campo
+      ? campo.value
+          .toLowerCase()
+          .trim()
+      : "";
 
 
   const filtrados =
@@ -1338,18 +2145,35 @@ function filtrarClientes() {
         return (
 
           String(
-            cliente.nombre || ""
+            cliente.nombre ||
+            ""
           )
             .toLowerCase()
-            .includes(texto)
+            .includes(
+              texto
+            )
 
           ||
 
           String(
-            cliente.telefono || ""
+            cliente.telefono ||
+            ""
           )
             .toLowerCase()
-            .includes(texto)
+            .includes(
+              texto
+            )
+
+          ||
+
+          String(
+            cliente.email ||
+            ""
+          )
+            .toLowerCase()
+            .includes(
+              texto
+            )
 
         );
 
@@ -1364,6 +2188,10 @@ function filtrarClientes() {
 }
 
 
+/* =====================================================
+   CLIENTES - RENDER
+===================================================== */
+
 function renderizarClientes(
   lista
 ) {
@@ -1372,6 +2200,13 @@ function renderizarClientes(
     document.getElementById(
       "listaClientes"
     );
+
+
+  if (!contenedor) {
+
+    return;
+
+  }
 
 
   if (!lista.length) {
@@ -1428,20 +2263,28 @@ function renderizarClientes(
 
             <td>
               <strong>
-                ${cliente.nombre || "-"}
+                ${escaparHTML(
+                  cliente.nombre || "-"
+                )}
               </strong>
             </td>
 
             <td>
-              ${cliente.telefono || "-"}
+              ${escaparHTML(
+                cliente.telefono || "-"
+              )}
             </td>
 
             <td>
-              ${cliente.direccion || "-"}
+              ${escaparHTML(
+                cliente.direccion || "-"
+              )}
             </td>
 
             <td>
-              ${cliente.email || "-"}
+              ${escaparHTML(
+                cliente.email || "-"
+              )}
             </td>
 
             <td>
@@ -1465,23 +2308,35 @@ function renderizarClientes(
 
 
 /* =====================================================
-   VENTAS
+   VENTAS - FILTRO
 ===================================================== */
 
 function filtrarVentas() {
 
-  const texto =
+  const campo =
     document.getElementById(
       "buscarVenta"
-    ).value
-      .toLowerCase()
-      .trim();
+    );
+
+
+  const filtroPago =
+    document.getElementById(
+      "filtroPago"
+    );
+
+
+  const texto =
+    campo
+      ? campo.value
+          .toLowerCase()
+          .trim()
+      : "";
 
 
   const pago =
-    document.getElementById(
-      "filtroPago"
-    ).value;
+    filtroPago
+      ? filtroPago.value
+      : "";
 
 
   const filtradas =
@@ -1491,18 +2346,35 @@ function filtrarVentas() {
         const coincideTexto =
 
           String(
-            venta.cliente || ""
+            venta.cliente ||
+            ""
           )
             .toLowerCase()
-            .includes(texto)
+            .includes(
+              texto
+            )
 
           ||
 
           String(
-            venta.servicio || ""
+            venta.servicio ||
+            ""
           )
             .toLowerCase()
-            .includes(texto);
+            .includes(
+              texto
+            )
+
+          ||
+
+          String(
+            venta.recibo ||
+            ""
+          )
+            .toLowerCase()
+            .includes(
+              texto
+            );
 
 
         const coincidePago =
@@ -1526,6 +2398,10 @@ function filtrarVentas() {
 }
 
 
+/* =====================================================
+   VENTAS - RENDER
+===================================================== */
+
 function renderizarVentas(
   lista
 ) {
@@ -1534,6 +2410,13 @@ function renderizarVentas(
     document.getElementById(
       "tablaVentas"
     );
+
+
+  if (!contenedor) {
+
+    return;
+
+  }
 
 
   if (!lista.length) {
@@ -1592,20 +2475,30 @@ function renderizarVentas(
 
             <td>
               <strong>
-                ${venta.recibo || "-"}
+                ${escaparHTML(
+                  venta.recibo ||
+                  venta.numero ||
+                  "-"
+                )}
               </strong>
             </td>
 
             <td>
-              ${venta.fecha || "-"}
+              ${escaparHTML(
+                venta.fecha || "-"
+              )}
             </td>
 
             <td>
-              ${venta.cliente || "-"}
+              ${escaparHTML(
+                venta.cliente || "-"
+              )}
             </td>
 
             <td>
-              ${venta.servicio || "-"}
+              ${escaparHTML(
+                venta.servicio || "-"
+              )}
             </td>
 
             <td>
@@ -1615,7 +2508,9 @@ function renderizarVentas(
             </td>
 
             <td>
-              ${venta.pago || "-"}
+              ${escaparHTML(
+                venta.pago || "-"
+              )}
             </td>
 
             <td>
@@ -1648,7 +2543,8 @@ function crearBadgeEstado(
 
   const valor =
     String(
-      estado || "PAGADO"
+      estado ||
+      "PAGADO"
     )
       .toUpperCase();
 
@@ -1658,18 +2554,28 @@ function crearBadgeEstado(
   ) {
 
     return `
+
       <span class="badge badge-pending">
+
         PENDIENTE
+
       </span>
+
     `;
 
   }
 
 
   return `
+
     <span class="badge badge-paid">
-      ${valor}
+
+      ${escaparHTML(
+        valor
+      )}
+
     </span>
+
   `;
 
 }
@@ -1686,13 +2592,102 @@ function formatearDinero(
   return new Intl.NumberFormat(
     "es-AR",
     {
-      style: "currency",
-      currency: "ARS",
-      maximumFractionDigits: 0
+
+      style:
+        "currency",
+
+      currency:
+        "ARS",
+
+      maximumFractionDigits:
+        0
+
     }
   ).format(
     Number(valor) || 0
   );
+
+}
+
+
+/* =====================================================
+   OBTENER VALOR
+===================================================== */
+
+function obtenerValor(
+  id
+) {
+
+  const elemento =
+    document.getElementById(
+      id
+    );
+
+
+  if (!elemento) {
+
+    return "";
+
+  }
+
+
+  return String(
+    elemento.value || ""
+  ).trim();
+
+}
+
+
+/* =====================================================
+   ESCAPAR HTML
+===================================================== */
+
+function escaparHTML(
+  valor
+) {
+
+  return String(
+    valor ?? ""
+  )
+    .replace(
+      /&/g,
+      "&amp;"
+    )
+    .replace(
+      /</g,
+      "&lt;"
+    )
+    .replace(
+      />/g,
+      "&gt;"
+    )
+    .replace(
+      /"/g,
+      "&quot;"
+    )
+    .replace(
+      /'/g,
+      "&#039;"
+    );
+
+}
+
+
+/* =====================================================
+   ESCAPAR ATRIBUTOS
+===================================================== */
+
+function escaparAtributo(
+  valor
+) {
+
+  return escaparHTML(
+    valor
+  )
+    .replace(
+      /`/g,
+      "&#096;"
+    );
 
 }
 
@@ -1712,6 +2707,20 @@ function mostrarToast(
     );
 
 
+  if (!toast) {
+
+    /*
+     * Fallback si todavía no existe
+     * el componente visual del toast.
+     */
+
+    alert(mensaje);
+
+    return;
+
+  }
+
+
   const icon =
     document.getElementById(
       "toastIcon"
@@ -1724,14 +2733,22 @@ function mostrarToast(
     );
 
 
-  icon.textContent =
-    tipo === "error"
-      ? "!"
-      : "✓";
+  if (icon) {
+
+    icon.textContent =
+      tipo === "error"
+        ? "!"
+        : "✓";
+
+  }
 
 
-  text.textContent =
-    mensaje;
+  if (text) {
+
+    text.textContent =
+      mensaje;
+
+  }
 
 
   toast.classList.add(

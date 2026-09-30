@@ -83,44 +83,70 @@ function obtenerCacheAPI(action) {
 
 document.addEventListener("DOMContentLoaded", async () => {
 
-  inicializarNavegacion();
+  mostrarPantallaCarga();
 
-  actualizarFecha();
+  try {
 
-  actualizarTotal();
+    inicializarNavegacion();
 
-  const servicio = document.getElementById("servicio");
+    actualizarFecha();
 
-  if (servicio) {
-    servicio.addEventListener(
-      "change",
-      actualizarPrecioServicio
+    actualizarTotal();
+
+    const servicio =
+      document.getElementById("servicio");
+
+    if (servicio) {
+
+      servicio.addEventListener(
+        "change",
+        actualizarPrecioServicio
+      );
+
+    }
+
+    const precio =
+      document.getElementById("precio");
+
+    if (precio) {
+
+      precio.addEventListener(
+        "input",
+        actualizarTotal
+      );
+
+    }
+
+    const cantidad =
+      document.getElementById("cantidad");
+
+    if (cantidad) {
+
+      cantidad.addEventListener(
+        "input",
+        actualizarTotal
+      );
+
+    }
+
+    inicializarBalance();
+
+    inicializarGastos();
+
+    await cargarDatos();
+
+  } catch (error) {
+
+    console.error(
+      "Error iniciando RosDrive:",
+      error
     );
+
+  } finally {
+
+    ocultarPantallaCarga();
+
   }
-
-  const precio = document.getElementById("precio");
-
-  if (precio) {
-    precio.addEventListener(
-      "input",
-      actualizarTotal
-    );
-  }
-
-  const cantidad = document.getElementById("cantidad");
-
-  if (cantidad) {
-    cantidad.addEventListener(
-      "input",
-      actualizarTotal
-    );
-  }
-
-  inicializarBalance();
-
-  inicializarGastos();
-
-  await cargarDatos();
 
 });
 
@@ -275,7 +301,97 @@ function actualizarFecha() {
     );
 
 }
+/* =========================================================
+   PANTALLA DE CARGA
+========================================================= */
 
+function mostrarPantallaCarga() {
+
+  let loader =
+    document.getElementById(
+      "rosdriveLoader"
+    );
+
+  if (loader) {
+
+    loader.classList.remove(
+      "oculto"
+    );
+
+    return;
+
+  }
+
+  loader =
+    document.createElement(
+      "div"
+    );
+
+  loader.id =
+    "rosdriveLoader";
+
+  loader.innerHTML = `
+
+    <div class="rosdrive-loader-box">
+
+      <div class="rosdrive-loader-logo">
+        R
+      </div>
+
+      <div class="rosdrive-loader-spinner"></div>
+
+      <h2>
+        RosDrive
+      </h2>
+
+      <p>
+        Cargando datos...
+      </p>
+
+      <span>
+        Un momento
+      </span>
+
+    </div>
+
+  `;
+
+  document.body.appendChild(
+    loader
+  );
+
+}
+
+
+function ocultarPantallaCarga() {
+
+  const loader =
+    document.getElementById(
+      "rosdriveLoader"
+    );
+
+  if (!loader) return;
+
+  loader.classList.add(
+    "oculto"
+  );
+
+  setTimeout(
+    () => {
+
+      if (loader.parentNode) {
+
+        loader.parentNode.removeChild(
+          loader
+        );
+
+      }
+
+    },
+    500
+  );
+
+}
 /* =========================================================
    API GET
 ========================================================= */

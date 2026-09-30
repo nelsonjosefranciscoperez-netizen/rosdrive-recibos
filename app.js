@@ -1,31 +1,7 @@
-/************************************************************
- * ROSDRIVE - APP WEB
- * GitHub Pages ↔ Google Apps Script ↔ Google Sheets
- ************************************************************/
-
 const API_URL =
   "https://script.google.com/macros/s/AKfycbwoLmnjN23zYnOU4rUJVe8Phvo5_Q5r15dqBrQb_AYIbPjhFBMAdTKoL14M_WNCkxum/exec";
 
-/* =========================================================
-   CONFIGURACIÓN
-========================================================= */
-
-const API_CACHE_TTL = 120000; // 2 minutos
-
-/*
- * IMPORTANTE:
- * Si en tu index.html ya tenés los números de WhatsApp
- * mediante data-whatsapp, el sistema los toma automáticamente.
- *
- * Si querés fijarlos desde acá, completá los números:
- *
- * Ejemplo:
- * Erika: "3415555555"
- * Bruno: "3415555555"
- * Hector: "3415555555"
- *
- * SIN +, SIN ESPACIOS y SIN 0.
- */
+const API_CACHE_TTL = 120000;
 
 const SOCIOS = {
   Erika: "",
@@ -39,10 +15,6 @@ const PORCENTAJES = {
   Hector: 10
 };
 
-/* =========================================================
-   VARIABLES
-========================================================= */
-
 let ventas = [];
 let clientes = [];
 let recibos = [];
@@ -55,10 +27,6 @@ let ultimoBalance = null;
 
 const apiCache = new Map();
 const apiRequests = new Map();
-
-/* =========================================================
-   CACHE
-========================================================= */
 
 function limpiarCacheAPI() {
   apiCache.clear();
@@ -77,13 +45,7 @@ function obtenerCacheAPI(action) {
   return item.data;
 }
 
-/* =========================================================
-   INICIO
-========================================================= */
-
 document.addEventListener("DOMContentLoaded", async () => {
-
-  mostrarPantallaCarga();
 
   try {
 
@@ -142,17 +104,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       error
     );
 
-  } finally {
-
-    ocultarPantallaCarga();
-
   }
 
 });
-
-/* =========================================================
-   NAVEGACIÓN
-========================================================= */
 
 function inicializarNavegacion() {
 
@@ -180,20 +134,26 @@ function mostrarSeccion(section) {
   document
     .querySelectorAll(".section")
     .forEach(el => {
+
       el.classList.remove("active");
+
     });
 
   document
     .querySelectorAll(".nav-item")
     .forEach(el => {
+
       el.classList.remove("active");
+
     });
 
   const destino =
     document.getElementById(section);
 
   if (destino) {
+
     destino.classList.add("active");
+
   }
 
   const boton =
@@ -202,7 +162,9 @@ function mostrarSeccion(section) {
     );
 
   if (boton) {
+
     boton.classList.add("active");
+
   }
 
   const titulos = {
@@ -257,26 +219,28 @@ function mostrarSeccion(section) {
       );
 
     if (titulo) {
+
       titulo.textContent =
         titulos[section][0];
+
     }
 
     if (subtitulo) {
+
       subtitulo.textContent =
         titulos[section][1];
+
     }
 
   }
 
   if (section === "balance") {
+
     actualizarBalance();
+
   }
 
 }
-
-/* =========================================================
-   FECHA
-========================================================= */
 
 function actualizarFecha() {
 
@@ -301,91 +265,6 @@ function actualizarFecha() {
     );
 
 }
-/* =========================================================
-   PANTALLA DE CARGA
-========================================================= */
-
-function mostrarPantallaCarga() {
-
-  let loader =
-    document.getElementById(
-      "rosdriveLoader"
-    );
-
-  if (loader) {
-
-    loader.classList.remove(
-      "oculto"
-    );
-
-    return;
-
-  }
-
-  loader =
-    document.createElement(
-      "div"
-    );
-
-  loader.id =
-    "rosdriveLoader";
-
-  loader.innerHTML = `
-
-    <div class="rosdrive-loader-box">
-
-      <div class="rosdrive-loader-logo">
-        R
-      </div>
-
-      <div class="rosdrive-loader-spinner"></div>
-
-      <h2>
-        RosDrive
-      </h2>
-
-      <p>
-        Cargando datos...
-      </p>
-
-      <span>
-        Un momento
-      </span>
-
-    </div>
-
-  `;
-
-  document.body.appendChild(
-    loader
-  );
-
-}
-
-
-function ocultarPantallaCarga() {
-
-  const loader =
-    document.getElementById("rosdriveLoader");
-
-  if (!loader) return;
-
-  loader.style.opacity = "0";
-  loader.style.visibility = "hidden";
-  loader.style.pointerEvents = "none";
-
-  setTimeout(() => {
-
-    if (loader && loader.parentNode) {
-      loader.parentNode.removeChild(loader);
-    }
-
-  }, 500);
-
-}
-/* =========================================================
-   API GET
-========================================================= */
 
 async function consultarAPI(
   action,
@@ -401,11 +280,15 @@ async function consultarAPI(
       obtenerCacheAPI(action);
 
     if (cache) {
+
       return cache;
+
     }
 
     if (apiRequests.has(action)) {
+
       return apiRequests.get(action);
+
     }
 
   }
@@ -460,7 +343,9 @@ async function consultarAPI(
 
     .finally(
       () => {
+
         apiRequests.delete(action);
+
       }
     );
 
@@ -472,10 +357,6 @@ async function consultarAPI(
   return promesa;
 
 }
-
-/* =========================================================
-   CARGAR DATOS
-========================================================= */
 
 async function cargarDatos(
   opciones = {}
@@ -521,8 +402,6 @@ async function cargarDatos(
 
       ]);
 
-    /* DASHBOARD */
-
     if (
       resultados[0].status ===
       "fulfilled"
@@ -543,8 +422,6 @@ async function cargarDatos(
       );
 
     }
-
-    /* VENTAS */
 
     if (
       resultados[1].status ===
@@ -574,8 +451,6 @@ async function cargarDatos(
 
     }
 
-    /* CLIENTES */
-
     if (
       resultados[2].status ===
       "fulfilled"
@@ -603,8 +478,6 @@ async function cargarDatos(
       );
 
     }
-
-    /* RECIBOS */
 
     if (
       resultados[3].status ===
@@ -634,8 +507,6 @@ async function cargarDatos(
 
     }
 
-    /* SERVICIOS */
-
     if (
       resultados[4].status ===
       "fulfilled"
@@ -664,8 +535,6 @@ async function cargarDatos(
 
     }
 
-    /* GASTOS */
-
     if (
       resultados[5].status ===
       "fulfilled"
@@ -686,12 +555,6 @@ async function cargarDatos(
       );
 
     } else {
-
-      /*
-       * Si todavía no existe la acción gastos
-       * en Apps Script, la aplicación continúa
-       * funcionando normalmente.
-       */
 
       console.warn(
         "No se pudieron cargar los gastos:",
@@ -719,17 +582,15 @@ async function cargarDatos(
 
 }
 
-/* =========================================================
-   NORMALIZAR LISTAS
-========================================================= */
-
 function normalizarLista(
   respuesta,
   posiblesPropiedades
 ) {
 
   if (!respuesta) {
+
     return [];
+
   }
 
   for (
@@ -749,16 +610,14 @@ function normalizarLista(
   }
 
   if (Array.isArray(respuesta)) {
+
     return respuesta;
+
   }
 
   return [];
 
 }
-
-/* =========================================================
-   DASHBOARD
-========================================================= */
 
 function actualizarDashboard(
   data
@@ -814,18 +673,24 @@ function actualizarDashboard(
   }
 
   if (statRecibos) {
+
     statRecibos.textContent =
       recibosMes;
+
   }
 
   if (statClientes) {
+
     statClientes.textContent =
       clientesTotal;
+
   }
 
   if (statServicios) {
+
     statServicios.textContent =
       serviciosTotal;
+
   }
 
   renderizarUltimasVentas(
@@ -833,10 +698,6 @@ function actualizarDashboard(
   );
 
 }
-
-/* =========================================================
-   ÚLTIMAS VENTAS
-========================================================= */
 
 function renderizarUltimasVentas(
   lista
@@ -905,41 +766,55 @@ function renderizarUltimasVentas(
           <tr>
 
             <td>
+
               <strong>
+
                 ${escaparHTML(
                   venta.recibo || "-"
                 )}
+
               </strong>
+
             </td>
 
             <td>
+
               ${escaparHTML(
                 venta.fecha || "-"
               )}
+
             </td>
 
             <td>
+
               ${escaparHTML(
                 venta.cliente || "-"
               )}
+
             </td>
 
             <td>
+
               ${escaparHTML(
                 venta.servicio || "-"
               )}
+
             </td>
 
             <td>
+
               ${formatearDinero(
                 venta.total
               )}
+
             </td>
 
             <td>
+
               ${crearBadgeEstado(
                 venta.estado
               )}
+
             </td>
 
           </tr>
@@ -954,10 +829,6 @@ function renderizarUltimasVentas(
   `;
 
 }
-
-/* =========================================================
-   ESTADÍSTICAS
-========================================================= */
 
 function actualizarEstadisticasGenerales() {
 
@@ -1043,10 +914,6 @@ function actualizarEstadisticasGenerales() {
 
 }
 
-/* =========================================================
-   SERVICIOS
-========================================================= */
-
 function cargarServicios(
   lista
 ) {
@@ -1060,7 +927,9 @@ function cargarServicios(
     !select ||
     !lista.length
   ) {
+
     return;
+
   }
 
   select.innerHTML = `
@@ -1115,10 +984,6 @@ function cargarServicios(
 
 }
 
-/* =========================================================
-   PRECIO SERVICIO
-========================================================= */
-
 function actualizarPrecioServicio() {
 
   const select =
@@ -1146,17 +1011,15 @@ function actualizarPrecioServicio() {
     );
 
   if (campoPrecio) {
+
     campoPrecio.value =
       precio;
+
   }
 
   actualizarTotal();
 
 }
-
-/* =========================================================
-   TOTAL
-========================================================= */
 
 function actualizarTotal() {
 
@@ -1202,10 +1065,6 @@ function actualizarTotal() {
   }
 
 }
-
-/* =========================================================
-   GENERAR VENTA
-========================================================= */
 
 async function generarVenta() {
 
@@ -1317,8 +1176,10 @@ async function generarVenta() {
           method: "POST",
 
           headers: {
+
             "Content-Type":
               "text/plain;charset=utf-8"
+
           },
 
           body:
@@ -1409,10 +1270,6 @@ async function generarVenta() {
 
 }
 
-/* =========================================================
-   RESULTADO RECIBO
-========================================================= */
-
 function mostrarResultadoRecibo(
   resultado
 ) {
@@ -1461,21 +1318,31 @@ function mostrarResultadoRecibo(
         </h3>
 
         <p>
+
           Recibo Nº
+
           <strong>
+
             ${escaparHTML(
               resultado.numero || "-"
             )}
+
           </strong>
+
         </p>
 
         <p>
+
           Total:
+
           <strong>
+
             ${formatearDinero(
               resultado.total
             )}
+
           </strong>
+
         </p>
 
       </div>
@@ -1530,10 +1397,6 @@ function mostrarResultadoRecibo(
 
 }
 
-/* =========================================================
-   WHATSAPP RECIBO
-========================================================= */
-
 function crearMensajeWhatsApp(
   datos,
   resultado
@@ -1587,10 +1450,6 @@ ${pdf}
 
 }
 
-/* =========================================================
-   NORMALIZAR WHATSAPP
-========================================================= */
-
 function normalizarWhatsApp(
   telefono
 ) {
@@ -1608,7 +1467,9 @@ function normalizarWhatsApp(
   if (
     numero.startsWith("549")
   ) {
+
     return numero;
+
   }
 
   if (
@@ -1647,10 +1508,6 @@ function normalizarWhatsApp(
 
 }
 
-/* =========================================================
-   CERRAR MODAL
-========================================================= */
-
 function cerrarModal() {
 
   const modal =
@@ -1667,10 +1524,6 @@ function cerrarModal() {
   }
 
 }
-
-/* =========================================================
-   LIMPIAR FORMULARIO
-========================================================= */
 
 function limpiarFormulario() {
 
@@ -1690,7 +1543,9 @@ function limpiarFormulario() {
         );
 
       if (elemento) {
+
         elemento.value = "";
+
       }
 
     }
@@ -1702,7 +1557,9 @@ function limpiarFormulario() {
     );
 
   if (servicio) {
+
     servicio.value = "";
+
   }
 
   const precio =
@@ -1711,7 +1568,9 @@ function limpiarFormulario() {
     );
 
   if (precio) {
+
     precio.value = "0";
+
   }
 
   const cantidad =
@@ -1720,7 +1579,9 @@ function limpiarFormulario() {
     );
 
   if (cantidad) {
+
     cantidad.value = "1";
+
   }
 
   const formaPago =
@@ -1729,8 +1590,10 @@ function limpiarFormulario() {
     );
 
   if (formaPago) {
+
     formaPago.value =
       "Transferencia";
+
   }
 
   const estado =
@@ -1739,17 +1602,15 @@ function limpiarFormulario() {
     );
 
   if (estado) {
+
     estado.value =
       "PAGADO";
+
   }
 
   actualizarTotal();
 
 }
-
-/* =========================================================
-   RECIBOS - FILTRO
-========================================================= */
 
 function filtrarRecibos() {
 
@@ -1798,10 +1659,6 @@ function filtrarRecibos() {
   );
 
 }
-
-/* =========================================================
-   RECIBOS - RENDER
-========================================================= */
 
 function renderizarRecibos(
   lista
@@ -1880,41 +1737,55 @@ function renderizarRecibos(
               <tr>
 
                 <td>
+
                   <strong>
+
                     ${escaparHTML(
                       numero || "-"
                     )}
+
                   </strong>
+
                 </td>
 
                 <td>
+
                   ${escaparHTML(
                     recibo.fecha || "-"
                   )}
+
                 </td>
 
                 <td>
+
                   ${escaparHTML(
                     recibo.cliente || "-"
                   )}
+
                 </td>
 
                 <td>
+
                   ${escaparHTML(
                     recibo.servicio || "-"
                   )}
+
                 </td>
 
                 <td>
+
                   ${formatearDinero(
                     recibo.total
                   )}
+
                 </td>
 
                 <td>
+
                   ${crearBadgeEstado(
                     recibo.estado
                   )}
+
                 </td>
 
                 <td>
@@ -1931,6 +1802,7 @@ function renderizarRecibos(
                     ${
                       pdf
                         ? `
+
                           <a
                             href="${pdf}"
                             target="_blank"
@@ -1939,6 +1811,7 @@ function renderizarRecibos(
                           >
                             📄 Ver
                           </a>
+
                         `
                         : ""
                     }
@@ -1951,7 +1824,9 @@ function renderizarRecibos(
                       )}')"
                       style="cursor:pointer;"
                     >
+
                       🗑️ Eliminar
+
                     </button>
 
                   </div>
@@ -1972,10 +1847,6 @@ function renderizarRecibos(
   `;
 
 }
-
-/* =========================================================
-   ELIMINAR RECIBO
-========================================================= */
 
 async function eliminarRecibo(
   numero
@@ -2015,8 +1886,10 @@ async function eliminarRecibo(
           method: "POST",
 
           headers: {
+
             "Content-Type":
               "text/plain;charset=utf-8"
+
           },
 
           body:
@@ -2078,10 +1951,6 @@ async function eliminarRecibo(
 
 }
 
-/* =========================================================
-   CLIENTES - FILTRO
-========================================================= */
-
 function filtrarClientes() {
 
   const campo =
@@ -2137,10 +2006,6 @@ function filtrarClientes() {
   );
 
 }
-
-/* =========================================================
-   CLIENTES - RENDER
-========================================================= */
 
 function renderizarClientes(
   lista
@@ -2205,35 +2070,47 @@ function renderizarClientes(
           <tr>
 
             <td>
+
               <strong>
+
                 ${escaparHTML(
                   cliente.nombre || "-"
                 )}
+
               </strong>
+
             </td>
 
             <td>
+
               ${escaparHTML(
                 cliente.telefono || "-"
               )}
+
             </td>
 
             <td>
+
               ${escaparHTML(
                 cliente.direccion || "-"
               )}
+
             </td>
 
             <td>
+
               ${escaparHTML(
                 cliente.email || "-"
               )}
+
             </td>
 
             <td>
+
               ${formatearDinero(
                 cliente.total || 0
               )}
+
             </td>
 
           </tr>
@@ -2248,10 +2125,6 @@ function renderizarClientes(
   `;
 
 }
-
-/* =========================================================
-   VENTAS - FILTRO
-========================================================= */
 
 function filtrarVentas() {
 
@@ -2326,10 +2199,6 @@ function filtrarVentas() {
 
 }
 
-/* =========================================================
-   VENTAS - RENDER
-========================================================= */
-
 function renderizarVentas(
   lista
 ) {
@@ -2395,51 +2264,67 @@ function renderizarVentas(
           <tr>
 
             <td>
+
               <strong>
+
                 ${escaparHTML(
                   venta.recibo ||
                   venta.numero ||
                   "-"
                 )}
+
               </strong>
+
             </td>
 
             <td>
+
               ${escaparHTML(
                 venta.fecha || "-"
               )}
+
             </td>
 
             <td>
+
               ${escaparHTML(
                 venta.cliente || "-"
               )}
+
             </td>
 
             <td>
+
               ${escaparHTML(
                 venta.servicio || "-"
               )}
+
             </td>
 
             <td>
+
               ${formatearDinero(
                 venta.total
               )}
+
             </td>
 
             <td>
+
               ${escaparHTML(
                 venta.pago ||
                 venta.formaPago ||
                 "-"
               )}
+
             </td>
 
             <td>
+
               ${crearBadgeEstado(
                 venta.estado
               )}
+
             </td>
 
           </tr>
@@ -2454,10 +2339,6 @@ function renderizarVentas(
   `;
 
 }
-
-/* =========================================================
-   GASTOS
-========================================================= */
 
 function inicializarGastos() {
 
@@ -2538,8 +2419,10 @@ async function registrarGasto() {
           method: "POST",
 
           headers: {
+
             "Content-Type":
               "text/plain;charset=utf-8"
+
           },
 
           body:
@@ -2549,8 +2432,11 @@ async function registrarGasto() {
                 "registrarGasto",
 
               descripcion,
+
               monto,
+
               categoria,
+
               fecha
 
             })
@@ -2591,7 +2477,9 @@ async function registrarGasto() {
       );
 
     if (formulario) {
+
       formulario.reset();
+
     }
 
     await cargarDatos({
@@ -2681,39 +2569,51 @@ function renderizarGastos(
           <tr>
 
             <td>
+
               ${escaparHTML(
                 formatearFecha(
                   gasto.fecha
                 )
               )}
+
             </td>
 
             <td>
+
               <strong>
+
                 ${escaparHTML(
                   gasto.descripcion ||
                   gasto.detalle ||
                   "-"
                 )}
+
               </strong>
+
             </td>
 
             <td>
+
               ${escaparHTML(
                 gasto.categoria ||
                 "-"
               )}
+
             </td>
 
             <td>
+
               <strong>
+
                 ${formatearDinero(
                   gasto.monto ||
                   gasto.total ||
                   gasto.importe ||
                   0
                 )}
+
               </strong>
+
             </td>
 
           </tr>
@@ -2728,10 +2628,6 @@ function renderizarGastos(
   `;
 
 }
-
-/* =========================================================
-   BALANCE
-========================================================= */
 
 function inicializarBalance() {
 
@@ -2781,10 +2677,6 @@ function inicializarBalance() {
 
 }
 
-/* =========================================================
-   OBTENER RANGO SEMANAL
-========================================================= */
-
 function obtenerRangoSemana(
   fechaBase
 ) {
@@ -2803,11 +2695,6 @@ function obtenerRangoSemana(
 
   const dia =
     fecha.getDay();
-
-  /*
-   * Domingo = 0
-   * Lunes = 1
-   */
 
   const diferencia =
     dia === 0
@@ -2854,10 +2741,6 @@ function obtenerRangoSemana(
   };
 
 }
-
-/* =========================================================
-   BALANCE PRINCIPAL
-========================================================= */
 
 function actualizarBalance() {
 
@@ -2979,6 +2862,7 @@ function actualizarBalance() {
       rango.fin,
 
     ingresos,
+
     gastos:
       totalGastos,
 
@@ -3007,10 +2891,6 @@ function actualizarBalance() {
 
 }
 
-/* =========================================================
-   FILTRAR FECHAS
-========================================================= */
-
 function filtrarPorRangoFecha(
   lista,
   inicio,
@@ -3018,7 +2898,9 @@ function filtrarPorRangoFecha(
 ) {
 
   if (!Array.isArray(lista)) {
+
     return [];
+
   }
 
   return lista.filter(
@@ -3033,7 +2915,9 @@ function filtrarPorRangoFecha(
         !fecha ||
         isNaN(fecha.getTime())
       ) {
+
         return false;
+
       }
 
       return (
@@ -3046,34 +2930,30 @@ function filtrarPorRangoFecha(
 
 }
 
-/* =========================================================
-   OBTENER FECHA
-========================================================= */
-
 function obtenerFechaObjeto(
   valor
 ) {
 
   if (!valor) {
+
     return new Date(0);
+
   }
 
   if (
     valor instanceof Date
   ) {
+
     return new Date(
       valor
     );
+
   }
 
   const texto =
     String(
       valor
     ).trim();
-
-  /*
-   * YYYY-MM-DD
-   */
 
   if (
     /^\d{4}-\d{2}-\d{2}$/.test(
@@ -3091,10 +2971,6 @@ function obtenerFechaObjeto(
     );
 
   }
-
-  /*
-   * DD/MM/YYYY
-   */
 
   if (
     /^\d{2}\/\d{2}\/\d{4}$/.test(
@@ -3121,10 +2997,6 @@ function obtenerFechaObjeto(
   return fecha;
 
 }
-
-/* =========================================================
-   MONTOS
-========================================================= */
 
 function obtenerMontoVenta(
   venta
@@ -3154,10 +3026,6 @@ function obtenerMontoGasto(
 
 }
 
-/* =========================================================
-   RENDER BALANCE
-========================================================= */
-
 function renderizarBalance(
   balance
 ) {
@@ -3174,8 +3042,6 @@ function renderizarBalance(
       balance.fin
     );
 
-  /* FECHAS */
-
   const elementoRango =
     document.getElementById(
       "rangoBalance"
@@ -3188,8 +3054,6 @@ function renderizarBalance(
 
   }
 
-  /* INGRESOS */
-
   colocarTexto(
     [
       "balanceIngresos",
@@ -3201,8 +3065,6 @@ function renderizarBalance(
     )
   );
 
-  /* GASTOS */
-
   colocarTexto(
     [
       "balanceGastos",
@@ -3213,8 +3075,6 @@ function renderizarBalance(
       balance.gastos
     )
   );
-
-  /* DISPONIBLE */
 
   colocarTexto(
     [
@@ -3228,8 +3088,6 @@ function renderizarBalance(
     )
   );
 
-  /* ERIKA */
-
   colocarTexto(
     [
       "balanceErika",
@@ -3240,8 +3098,6 @@ function renderizarBalance(
       balance.Erika
     )
   );
-
-  /* BRUNO */
 
   colocarTexto(
     [
@@ -3254,8 +3110,6 @@ function renderizarBalance(
     )
   );
 
-  /* HECTOR */
-
   colocarTexto(
     [
       "balanceHector",
@@ -3266,8 +3120,6 @@ function renderizarBalance(
       balance.Hector
     )
   );
-
-  /* PORCENTAJES */
 
   colocarTexto(
     [
@@ -3290,29 +3142,19 @@ function renderizarBalance(
     `${PORCENTAJES.Hector}%`
   );
 
-  /* TABLA VENTAS */
-
   renderizarVentasBalance(
     balance.ventas
   );
 
-  /* TABLA GASTOS */
-
   renderizarGastosBalance(
     balance.gastosLista
   );
-
-  /* WHATSAPP */
 
   configurarWhatsAppBalance(
     balance
   );
 
 }
-
-/* =========================================================
-   COLOCAR TEXTO
-========================================================= */
 
 function colocarTexto(
   ids,
@@ -3328,18 +3170,16 @@ function colocarTexto(
         );
 
       if (elemento) {
+
         elemento.textContent =
           valor;
+
       }
 
     }
   );
 
 }
-
-/* =========================================================
-   TABLA VENTAS BALANCE
-========================================================= */
 
 function renderizarVentasBalance(
   lista
@@ -3381,10 +3221,12 @@ function renderizarVentasBalance(
       <thead>
 
         <tr>
+
           <th>FECHA</th>
           <th>CLIENTE</th>
           <th>SERVICIO</th>
           <th>TOTAL</th>
+
         </tr>
 
       </thead>
@@ -3397,35 +3239,45 @@ function renderizarVentasBalance(
           <tr>
 
             <td>
+
               ${escaparHTML(
                 formatearFecha(
                   venta.fecha
                 )
               )}
+
             </td>
 
             <td>
+
               ${escaparHTML(
                 venta.cliente ||
                 "-"
               )}
+
             </td>
 
             <td>
+
               ${escaparHTML(
                 venta.servicio ||
                 "-"
               )}
+
             </td>
 
             <td>
+
               <strong>
+
                 ${formatearDinero(
                   obtenerMontoVenta(
                     venta
                   )
                 )}
+
               </strong>
+
             </td>
 
           </tr>
@@ -3440,10 +3292,6 @@ function renderizarVentasBalance(
   `;
 
 }
-
-/* =========================================================
-   TABLA GASTOS BALANCE
-========================================================= */
 
 function renderizarGastosBalance(
   lista
@@ -3485,10 +3333,12 @@ function renderizarGastosBalance(
       <thead>
 
         <tr>
+
           <th>FECHA</th>
           <th>DESCRIPCIÓN</th>
           <th>CATEGORÍA</th>
           <th>MONTO</th>
+
         </tr>
 
       </thead>
@@ -3501,36 +3351,46 @@ function renderizarGastosBalance(
           <tr>
 
             <td>
+
               ${escaparHTML(
                 formatearFecha(
                   gasto.fecha
                 )
               )}
+
             </td>
 
             <td>
+
               ${escaparHTML(
                 gasto.descripcion ||
                 gasto.detalle ||
                 "-"
               )}
+
             </td>
 
             <td>
+
               ${escaparHTML(
                 gasto.categoria ||
                 "-"
               )}
+
             </td>
 
             <td>
+
               <strong>
+
                 ${formatearDinero(
                   obtenerMontoGasto(
                     gasto
                   )
                 )}
+
               </strong>
+
             </td>
 
           </tr>
@@ -3546,30 +3406,30 @@ function renderizarGastosBalance(
 
 }
 
-/* =========================================================
-   WHATSAPP BALANCE
-========================================================= */
-
 function configurarWhatsAppBalance(
   balance
 ) {
 
   const socios = [
+
     {
       nombre: "Erika",
       monto: balance.Erika,
       porcentaje: PORCENTAJES.Erika
     },
+
     {
       nombre: "Bruno",
       monto: balance.Bruno,
       porcentaje: PORCENTAJES.Bruno
     },
+
     {
       nombre: "Hector",
       monto: balance.Hector,
       porcentaje: PORCENTAJES.Hector
     }
+
   ];
 
   socios.forEach(
@@ -3588,9 +3448,11 @@ function configurarWhatsAppBalance(
 
       const url =
         numero
+
           ? `https://wa.me/${numero}?text=${encodeURIComponent(
               mensaje
             )}`
+
           : `https://wa.me/?text=${encodeURIComponent(
               mensaje
             )}`;
@@ -3666,10 +3528,6 @@ function configurarWhatsAppBalance(
 
 }
 
-/* =========================================================
-   OBTENER NÚMERO SOCIO
-========================================================= */
-
 function obtenerNumeroSocio(
   nombre
 ) {
@@ -3677,11 +3535,6 @@ function obtenerNumeroSocio(
   let numero =
     SOCIOS[nombre] ||
     "";
-
-  /*
-   * También intenta buscarlo
-   * directamente desde el botón.
-   */
 
   const ids = {
 
@@ -3742,10 +3595,6 @@ function obtenerNumeroSocio(
 
 }
 
-/* =========================================================
-   MENSAJE BALANCE INDIVIDUAL
-========================================================= */
-
 function crearMensajeBalanceWhatsApp(
   socio,
   balance
@@ -3788,10 +3637,6 @@ ${formatearDinero(
 RosDrive 🚗`;
 
 }
-
-/* =========================================================
-   MENSAJE GENERAL
-========================================================= */
 
 function crearMensajeBalanceGeneral(
   balance
@@ -3839,10 +3684,6 @@ RosDrive 🚗`;
 
 }
 
-/* =========================================================
-   CERRAR BALANCE
-========================================================= */
-
 async function cerrarBalance() {
 
   if (!ultimoBalance) {
@@ -3867,6 +3708,7 @@ async function cerrarBalance() {
 
   const confirmado =
     confirm(
+
       `¿Cerrar el balance semanal?\n\n` +
 
       `Ingresos: ${formatearDinero(
@@ -3892,10 +3734,13 @@ async function cerrarBalance() {
       `Héctor 10%: ${formatearDinero(
         balance.Hector
       )}`
+
     );
 
   if (!confirmado) {
+
     return;
+
   }
 
   try {
@@ -3908,8 +3753,10 @@ async function cerrarBalance() {
           method: "POST",
 
           headers: {
+
             "Content-Type":
               "text/plain;charset=utf-8"
+
           },
 
           body:
@@ -3986,12 +3833,6 @@ async function cerrarBalance() {
 
     console.error(error);
 
-    /*
-     * Si Apps Script todavía no tiene
-     * la función de cerrar balance,
-     * mostramos igualmente el resumen.
-     */
-
     mostrarToast(
       "El balance fue calculado, pero no pudo guardarse: " +
       error.message,
@@ -4001,10 +3842,6 @@ async function cerrarBalance() {
   }
 
 }
-
-/* =========================================================
-   FORMATEAR FECHA
-========================================================= */
 
 function formatearFecha(
   valor
@@ -4052,7 +3889,9 @@ function convertirFechaInput(
       d.getTime()
     )
   ) {
+
     return "";
+
   }
 
   const año =
@@ -4078,10 +3917,6 @@ function convertirFechaInput(
 
 }
 
-/* =========================================================
-   BADGE ESTADO
-========================================================= */
-
 function crearBadgeEstado(
   estado
 ) {
@@ -4100,7 +3935,9 @@ function crearBadgeEstado(
     return `
 
       <span class="badge badge-pending">
+
         PENDIENTE
+
       </span>
 
     `;
@@ -4120,10 +3957,6 @@ function crearBadgeEstado(
   `;
 
 }
-
-/* =========================================================
-   FORMATO DINERO
-========================================================= */
 
 function formatearDinero(
   valor
@@ -4149,10 +3982,6 @@ function formatearDinero(
 
 }
 
-/* =========================================================
-   OBTENER VALOR
-========================================================= */
-
 function obtenerValor(
   id
 ) {
@@ -4163,7 +3992,9 @@ function obtenerValor(
     );
 
   if (!elemento) {
+
     return "";
+
   }
 
   return String(
@@ -4171,10 +4002,6 @@ function obtenerValor(
   ).trim();
 
 }
-
-/* =========================================================
-   ESCAPAR HTML
-========================================================= */
 
 function escaparHTML(
   valor
@@ -4206,10 +4033,6 @@ function escaparHTML(
 
 }
 
-/* =========================================================
-   ESCAPAR ATRIBUTO
-========================================================= */
-
 function escaparAtributo(
   valor
 ) {
@@ -4223,10 +4046,6 @@ function escaparAtributo(
     );
 
 }
-
-/* =========================================================
-   TOAST
-========================================================= */
 
 function mostrarToast(
   mensaje,
@@ -4288,18 +4107,3 @@ function mostrarToast(
   );
 
 }
-/* =========================================================
-   SEGURIDAD LOADER
-   Nunca dejar la pantalla de carga bloqueada
-========================================================= */
-
-setTimeout(() => {
-
-  const loader =
-    document.getElementById("rosdriveLoader");
-
-  if (loader) {
-    ocultarPantallaCarga();
-  }
-
-}, 15000);

@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>RosDrive | Sistema de Recibos</title>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <div class="app">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+
+      <div class="brand">
+        <div class="brand-logo">R</div>
+
+        <div>
+          <strong>RosDrive</strong>
+          <span>Sistema de gestión</span>
+        </div>
+      </div>
+
+      <nav>
+
+        <button class="nav-item active" data-section="dashboard">
+          <span>📊</span>
+          Dashboard
+        </button>
+
+        <button class="nav-item" data-section="venta">
+          <span>➕</span>
+          Nueva venta
+        </button>
+
+        <button class="nav-item" data-section="recibos">
+          <span>🧾</span>
+          Recibos
+        </button>
+
+        <button class="nav-item" data-section="clientes">
+          <span>👥</span>
+          Clientes
+        </button>
+
+        <button class="nav-item" data-section="ventas">
+          <span>📈</span>
+          Ventas
+        </button>
+
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="connection">
+          <span class="connection-dot"></span>
+          Sistema conectado
+        </div>
+      </div>
+
+    </aside>
+
+
+    <!-- CONTENIDO -->
+    <main class="main">
+
+      <!-- TOPBAR -->
+      <header class="topbar">
+
+        <div>
+          <h1 id="page-title">Dashboard</h1>
+          <p id="page-subtitle">
+            Resumen de actividad de RosDrive
+          </p>
+        </div>
+
+        <button class="top-button" onclick="mostrarSeccion('venta')">
+          <span>＋</span>
+          Nueva venta
+        </button>
+
+      </header>
+
+
+      <!-- ================= DASHBOARD ================= -->
+
+      <section id="dashboard" class="section active">
+
+        <div class="welcome">
+          <div>
+            <h2>Hola 👋</h2>
+            <p>
+              Desde acá vas a poder controlar las ventas y recibos de RosDrive.
+            </p>
+          </div>
+
+          <div class="date-box">
+            <span id="fechaActual"></span>
+          </div>
+        </div>
+
+
+        <div class="stats-grid">
+
+          <div class="stat-card">
+            <div class="stat-icon">💰</div>
+
+            <div>
+              <span>Facturación del mes</span>
+              <strong id="statFacturacion">$0</strong>
+            </div>
+          </div>
+
+
+          <div class="stat-card">
+            <div class="stat-icon">🧾</div>
+
+            <div>
+              <span>Recibos emitidos</span>
+              <strong id="statRecibos">0</strong>
+            </div>
+          </div>
+
+
+          <div class="stat-card">
+            <div class="stat-icon">👥</div>
+
+            <div>
+              <span>Clientes</span>
+              <strong id="statClientes">0</strong>
+            </div>
+          </div>
+
+
+          <div class="stat-card">
+            <div class="stat-icon">🚗</div>
+
+            <div>
+              <span>Servicios vendidos</span>
+              <strong id="statServicios">0</strong>
+            </div>
+          </div>
+
+        </div>
+
+
+        <div class="dashboard-grid">
+
+          <div class="panel">
+
+            <div class="panel-header">
+              <div>
+                <h3>Últimas ventas</h3>
+                <p>Movimientos recientes</p>
+              </div>
+
+              <button
+                class="text-button"
+                onclick="mostrarSeccion('ventas')">
+                Ver todas
+              </button>
+            </div>
+
+            <div id="ultimasVentas" class="empty-state">
+
+              <div class="empty-icon">📊</div>
+
+              <h3>Todavía no hay ventas cargadas</h3>
+
+              <p>
+                Las ventas que generes desde la app aparecerán acá.
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <div class="panel quick-panel">
+
+            <div class="panel-header">
+              <div>
+                <h3>Acciones rápidas</h3>
+                <p>Accedé rápidamente a las funciones</p>
+              </div>
+            </div>
+
+            <button
+              class="quick-action"
+              onclick="mostrarSeccion('venta')">
+
+              <span>➕</span>
+
+              <div>
+                <strong>Nueva venta</strong>
+                <small>Registrar un nuevo servicio</small>
+              </div>
+
+              <b>›</b>
+
+            </button>
+
+
+            <button
+              class="quick-action"
+              onclick="mostrarSeccion('recibos')">
+
+              <span>🧾</span>
+
+              <div>
+                <strong>Recibos</strong>
+                <small>Consultar recibos emitidos</small>
+              </div>
+
+              <b>›</b>
+
+            </button>
+
+
+            <button
+              class="quick-action"
+              onclick="mostrarSeccion('clientes')">
+
+              <span>👥</span>
+
+              <div>
+                <strong>Clientes</strong>
+                <small>Consultar clientes</small>
+              </div>
+
+              <b>›</b>
+
+            </button>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- ================= NUEVA VENTA ================= -->
+
+      <section id="venta" class="section">
+
+        <div class="section-heading">
+
+          <div>
+            <h2>Nueva venta</h2>
+            <p>
+              Registrá el servicio contratado por el cliente.
+            </p>
+          </div>
+
+        </div>
+
+
+        <div class="form-panel">
+
+          <div class="form-section-title">
+            <span>👤</span>
+
+            <div>
+              <h3>Datos del cliente</h3>
+              <p>Información del comprador</p>
+            </div>
+          </div>
+
+
+          <div class="form-grid">
+
+            <div class="field field-large">
+
+              <label>Nombre completo *</label>
+
+              <input
+                id="cliente"
+                type="text"
+                placeholder="Ej. Juan Pérez">
+
+            </div>
+
+
+            <div class="field">
+
+              <label>Teléfono</label>
+
+              <input
+                id="telefono"
+                type="text"
+                placeholder="Ej. 341 1234567">
+
+            </div>
+
+
+            <div class="field">
+
+              <label>Dirección</label>
+
+              <input
+                id="direccion"
+                type="text"
+                placeholder="Dirección del cliente">
+
+            </div>
+
+
+            <div class="field">
+
+              <label>Email</label>
+
+              <input
+                id="email"
+                type="email"
+                placeholder="cliente@email.com">
+
+            </div>
+
+          </div>
+
+
+          <div class="form-divider"></div>
+
+
+          <div class="form-section-title">
+
+            <span>🚗</span>
+
+            <div>
+              <h3>Datos de la venta</h3>
+              <p>Servicio contratado y forma de pago</p>
+            </div>
+
+          </div>
+
+
+          <div class="form-grid">
+
+            <div class="field field-large">
+
+              <label>Servicio *</label>
+
+              <select id="servicio">
+
+                <option value="">
+                  Seleccionar servicio...
+                </option>
+
+                <option
+                  value="Pack Premium Promo x6 B1"
+                  data-precio="197000">
+
+                  Pack Premium Promo x6 B1
+
+                </option>
+
+              </select>
+
+            </div>
+
+
+            <div class="field">
+
+              <label>Precio</label>
+
+              <div class="input-money">
+
+                <span>$</span>
+
+                <input
+                  id="precio"
+                  type="number"
+                  value="0"
+                  min="0">
+
+              </div>
+
+            </div>
+
+
+            <div class="field">
+
+              <label>Cantidad</label>
+
+              <input
+                id="cantidad"
+                type="number"
+                value="1"
+                min="1">
+
+            </div>
+
+
+            <div class="field">
+
+              <label>Forma de pago</label>
+
+              <select id="formaPago">
+
+                <option value="Transferencia">
+                  Transferencia
+                </option>
+
+                <option value="Efectivo">
+                  Efectivo
+                </option>
+
+                <option value="Débito">
+                  Débito
+                </option>
+
+                <option value="Crédito">
+                  Crédito
+                </option>
+
+                <option value="Otro">
+                  Otro
+                </option>
+
+              </select>
+
+            </div>
+
+
+            <div class="field">
+
+              <label>Estado</label>
+
+              <select id="estado">
+
+                <option value="PAGADO">
+                  PAGADO
+                </option>
+
+                <option value="PENDIENTE">
+                  PENDIENTE
+                </option>
+
+              </select>
+
+            </div>
+
+          </div>
+
+
+          <div class="total-box">
+
+            <span>Total de la venta</span>
+
+            <strong id="totalVenta">$0</strong>
+
+          </div>
+
+
+          <div class="form-actions">
+
+            <button
+              class="secondary-button"
+              onclick="limpiarFormulario()">
+
+              Limpiar
+
+            </button>
+
+
+            <button
+              class="primary-button"
+              id="btnGenerar"
+              onclick="generarVenta()">
+
+              🧾 Generar recibo
+
+            </button>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- ================= RECIBOS ================= -->
+
+      <section id="recibos" class="section">
+
+        <div class="section-heading">
+
+          <div>
+            <h2>Recibos</h2>
+            <p>
+              Historial de recibos generados.
+            </p>
+          </div>
+
+        </div>
+
+
+        <div class="panel">
+
+          <div class="search-bar">
+
+            <input
+              id="buscarRecibo"
+              type="text"
+              placeholder="Buscar por cliente o número de recibo..."
+              oninput="filtrarRecibos()">
+
+          </div>
+
+
+          <div id="listaRecibos">
+
+            <div class="empty-state">
+
+              <div class="empty-icon">🧾</div>
+
+              <h3>No hay recibos para mostrar</h3>
+
+              <p>
+                Los recibos generados aparecerán acá.
+              </p>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- ================= CLIENTES ================= -->
+
+      <section id="clientes" class="section">
+
+        <div class="section-heading">
+
+          <div>
+            <h2>Clientes</h2>
+            <p>
+              Base de clientes de RosDrive.
+            </p>
+          </div>
+
+        </div>
+
+
+        <div class="panel">
+
+          <div class="search-bar">
+
+            <input
+              id="buscarCliente"
+              type="text"
+              placeholder="Buscar cliente..."
+              oninput="filtrarClientes()">
+
+          </div>
+
+
+          <div id="listaClientes">
+
+            <div class="empty-state">
+
+              <div class="empty-icon">👥</div>
+
+              <h3>No hay clientes para mostrar</h3>
+
+              <p>
+                Los clientes aparecerán automáticamente al registrar ventas.
+              </p>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- ================= VENTAS ================= -->
+
+      <section id="ventas" class="section">
+
+        <div class="section-heading">
+
+          <div>
+            <h2>Ventas</h2>
+            <p>
+              Historial de operaciones.
+            </p>
+          </div>
+
+        </div>
+
+
+        <div class="panel">
+
+          <div class="filters">
+
+            <input
+              id="buscarVenta"
+              type="text"
+              placeholder="Buscar cliente o servicio..."
+              oninput="filtrarVentas()">
+
+
+            <select id="filtroPago" onchange="filtrarVentas()">
+
+              <option value="">
+                Todas las formas de pago
+              </option>
+
+              <option value="Transferencia">
+                Transferencia
+              </option>
+
+              <option value="Efectivo">
+                Efectivo
+              </option>
+
+              <option value="Débito">
+                Débito
+              </option>
+
+              <option value="Crédito">
+                Crédito
+              </option>
+
+            </select>
+
+          </div>
+
+
+          <div id="tablaVentas">
+
+            <div class="empty-state">
+
+              <div class="empty-icon">📈</div>
+
+              <h3>No hay ventas para mostrar</h3>
+
+              <p>
+                Las operaciones aparecerán acá.
+              </p>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+    </main>
+
+  </div>
+
+
+  <!-- TOAST -->
+
+  <div id="toast" class="toast">
+    <span id="toastIcon">✓</span>
+    <span id="toastMessage">Operación realizada</span>
+  </div>
+
+
+  <!-- MODAL RECIBO -->
+
+  <div id="modalRecibo" class="modal">
+
+    <div class="modal-content">
+
+      <button
+        class="modal-close"
+        onclick="cerrarModal()">
+        ×
+      </button>
+
+      <div class="success-icon">
+        ✓
+      </div>
+
+      <h2>¡Recibo generado!</h2>
+
+      <p id="resultadoRecibo">
+        El recibo se generó correctamente.
+      </p>
+
+      <div class="modal-actions">
+
+        <a
+          id="btnVerPDF"
+          href="#"
+          target="_blank"
+          class="primary-button">
+
+          📄 Ver PDF
+
+        </a>
+
+        <button
+          class="secondary-button"
+          onclick="cerrarModal()">
+
+          Cerrar
+
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <script src="app.js"></script>
+
+</body>
+</html>

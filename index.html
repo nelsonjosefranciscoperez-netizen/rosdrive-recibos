@@ -61,7 +61,9 @@
 
         <div class="brand-info">
 
-          <strong>RosDrive</strong>
+          <strong>
+            RosDrive
+          </strong>
 
           <span>
             Escuela de conductores
@@ -71,8 +73,6 @@
 
       </div>
 
-
-      <!-- SEPARADOR -->
 
       <div class="sidebar-line"></div>
 
@@ -187,13 +187,50 @@
         </button>
 
 
+        <!-- GASTOS -->
+
+        <button
+          class="nav-item"
+          data-section="gastos"
+          type="button"
+        >
+
+          <span class="nav-icon">
+            💸
+          </span>
+
+          <span class="nav-text">
+            Gastos
+          </span>
+
+        </button>
+
+
+        <!-- BALANCE -->
+
+        <button
+          class="nav-item"
+          data-section="balance"
+          type="button"
+        >
+
+          <span class="nav-icon">
+            💰
+          </span>
+
+          <span class="nav-text">
+            Balance
+          </span>
+
+        </button>
+
+
       </nav>
 
 
       <!-- PARTE INFERIOR -->
 
       <div class="sidebar-bottom">
-
 
         <div class="sidebar-brand-mini">
 
@@ -220,7 +257,7 @@
 
 
         <div class="sidebar-version">
-          v1.0
+          v2.0
         </div>
 
       </div>
@@ -237,9 +274,7 @@
     <main class="main">
 
 
-      <!-- ==================================================
-           TOPBAR
-      =================================================== -->
+      <!-- TOPBAR -->
 
       <header class="topbar">
 
@@ -293,6 +328,7 @@
 
           </button>
 
+
         </div>
 
 
@@ -301,7 +337,7 @@
 
 
       <!-- ==================================================
-           CONTENEDOR DE SECCIONES
+           CONTENIDO
       =================================================== -->
 
       <div class="content">
@@ -317,10 +353,7 @@
         >
 
 
-          <!-- BIENVENIDA -->
-
           <div class="welcome">
-
 
             <div class="welcome-text">
 
@@ -334,7 +367,7 @@
 
               <p>
                 Desde acá podés controlar las ventas,
-                clientes y recibos de RosDrive.
+                clientes, recibos y balances de RosDrive.
               </p>
 
             </div>
@@ -352,14 +385,11 @@
 
             </div>
 
-
           </div>
 
 
 
-          <!-- ==================================================
-               ESTADÍSTICAS
-          =================================================== -->
+          <!-- ESTADÍSTICAS -->
 
           <div class="stats-grid">
 
@@ -492,9 +522,7 @@
 
 
 
-          <!-- ==================================================
-               DASHBOARD INFERIOR
-          =================================================== -->
+          <!-- DASHBOARD INFERIOR -->
 
           <div class="dashboard-grid">
 
@@ -530,7 +558,10 @@
                 >
 
                   Ver todas
-                  <span>→</span>
+
+                  <span>
+                    →
+                  </span>
 
                 </button>
 
@@ -681,6 +712,37 @@
               </button>
 
 
+              <!-- BALANCE -->
+
+              <button
+                class="quick-action"
+                type="button"
+                onclick="mostrarSeccion('balance')"
+              >
+
+                <span class="quick-action-icon">
+                  💰
+                </span>
+
+                <div>
+
+                  <strong>
+                    Balance semanal
+                  </strong>
+
+                  <small>
+                    Ver ingresos, gastos y distribución
+                  </small>
+
+                </div>
+
+                <b>
+                  →
+                </b>
+
+              </button>
+
+
             </div>
 
 
@@ -750,11 +812,8 @@
             </div>
 
 
-
             <div class="form-grid">
 
-
-              <!-- NOMBRE -->
 
               <div class="field field-large">
 
@@ -773,8 +832,6 @@
               </div>
 
 
-              <!-- TELÉFONO -->
-
               <div class="field">
 
                 <label>
@@ -791,8 +848,6 @@
               </div>
 
 
-              <!-- DIRECCIÓN -->
-
               <div class="field">
 
                 <label>
@@ -808,8 +863,6 @@
 
               </div>
 
-
-              <!-- EMAIL -->
 
               <div class="field">
 
@@ -830,9 +883,7 @@
             </div>
 
 
-
             <div class="form-divider"></div>
-
 
 
             <!-- DATOS VENTA -->
@@ -858,11 +909,8 @@
             </div>
 
 
-
             <div class="form-grid">
 
-
-              <!-- SERVICIO -->
 
               <div class="field field-large">
 
@@ -885,8 +933,6 @@
 
               </div>
 
-
-              <!-- PRECIO -->
 
               <div class="field">
 
@@ -913,8 +959,6 @@
               </div>
 
 
-              <!-- CANTIDAD -->
-
               <div class="field">
 
                 <label>
@@ -931,8 +975,6 @@
 
               </div>
 
-
-              <!-- FORMA PAGO -->
 
               <div class="field">
 
@@ -967,8 +1009,6 @@
               </div>
 
 
-              <!-- ESTADO -->
-
               <div class="field">
 
                 <label>
@@ -993,11 +1033,9 @@
             </div>
 
 
-
             <!-- TOTAL -->
 
             <div class="total-box">
-
 
               <div>
 
@@ -1011,29 +1049,23 @@
 
               </div>
 
-
               <strong id="totalVenta">
                 $0
               </strong>
 
-
             </div>
-
 
 
             <!-- ACCIONES -->
 
             <div class="form-actions">
 
-
               <button
                 class="secondary-button"
                 type="button"
                 onclick="limpiarFormulario()"
               >
-
                 Limpiar
-
               </button>
 
 
@@ -1051,7 +1083,6 @@
                 Generar recibo
 
               </button>
-
 
             </div>
 
@@ -1094,7 +1125,6 @@
           </div>
 
 
-
           <div class="panel">
 
 
@@ -1131,9 +1161,7 @@
             </div>
 
 
-
             <div id="listaRecibos">
-
 
               <div class="empty-state">
 
@@ -1150,7 +1178,6 @@
                 </p>
 
               </div>
-
 
             </div>
 
@@ -1193,7 +1220,6 @@
           </div>
 
 
-
           <div class="panel">
 
 
@@ -1227,13 +1253,10 @@
 
               </div>
 
-
             </div>
 
 
-
             <div id="listaClientes">
-
 
               <div class="empty-state">
 
@@ -1251,7 +1274,6 @@
                 </p>
 
               </div>
-
 
             </div>
 
@@ -1292,7 +1314,6 @@
             </div>
 
           </div>
-
 
 
           <div class="panel">
@@ -1366,9 +1387,7 @@
             </div>
 
 
-
             <div id="tablaVentas">
-
 
               <div class="empty-state">
 
@@ -1383,6 +1402,818 @@
                 <p>
                   Las operaciones aparecerán acá.
                 </p>
+
+              </div>
+
+            </div>
+
+
+          </div>
+
+
+        </section>
+
+
+
+        <!-- ==================================================
+             GASTOS
+        =================================================== -->
+
+        <section
+          id="gastos"
+          class="section"
+        >
+
+
+          <div class="section-heading">
+
+            <div>
+
+              <span class="eyebrow">
+                ADMINISTRACIÓN
+              </span>
+
+              <h2>
+                Gastos
+              </h2>
+
+              <p>
+                Registrá los gastos de RosDrive para calcular
+                correctamente el balance semanal.
+              </p>
+
+            </div>
+
+          </div>
+
+
+
+          <!-- FORMULARIO GASTO -->
+
+          <div class="form-panel">
+
+
+            <div class="form-section-title">
+
+              <span class="form-section-icon">
+                💸
+              </span>
+
+              <div>
+
+                <h3>
+                  Nuevo gasto
+                </h3>
+
+                <p>
+                  El importe se descontará del balance.
+                </p>
+
+              </div>
+
+            </div>
+
+
+            <div class="form-grid">
+
+
+              <div class="field">
+
+                <label>
+                  Fecha
+                </label>
+
+                <input
+                  id="gastoFecha"
+                  type="date"
+                >
+
+              </div>
+
+
+              <div class="field field-large">
+
+                <label>
+                  Concepto
+                  <span>*</span>
+                </label>
+
+                <input
+                  id="gastoConcepto"
+                  type="text"
+                  placeholder="Ej. Combustible"
+                >
+
+              </div>
+
+
+              <div class="field">
+
+                <label>
+                  Categoría
+                </label>
+
+                <select id="gastoCategoria">
+
+                  <option value="General">
+                    General
+                  </option>
+
+                  <option value="Combustible">
+                    Combustible
+                  </option>
+
+                  <option value="Alquiler">
+                    Alquiler
+                  </option>
+
+                  <option value="Servicios">
+                    Servicios
+                  </option>
+
+                  <option value="Mantenimiento">
+                    Mantenimiento
+                  </option>
+
+                  <option value="Publicidad">
+                    Publicidad
+                  </option>
+
+                  <option value="Otros">
+                    Otros
+                  </option>
+
+                </select>
+
+              </div>
+
+
+              <div class="field">
+
+                <label>
+                  Importe
+                  <span>*</span>
+                </label>
+
+                <div class="input-money">
+
+                  <span>
+                    $
+                  </span>
+
+                  <input
+                    id="gastoImporte"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0"
+                  >
+
+                </div>
+
+              </div>
+
+
+              <div class="field field-large">
+
+                <label>
+                  Observaciones
+                </label>
+
+                <input
+                  id="gastoObservaciones"
+                  type="text"
+                  placeholder="Opcional"
+                >
+
+              </div>
+
+
+            </div>
+
+
+            <div class="form-actions">
+
+              <button
+                class="secondary-button"
+                type="button"
+                onclick="limpiarGasto()"
+              >
+                Limpiar
+              </button>
+
+
+              <button
+                class="primary-button"
+                type="button"
+                onclick="registrarGasto()"
+              >
+
+                <span>
+                  💸
+                </span>
+
+                Registrar gasto
+
+              </button>
+
+            </div>
+
+
+          </div>
+
+
+
+          <!-- HISTORIAL GASTOS -->
+
+          <div class="panel">
+
+
+            <div class="search-header">
+
+              <div>
+
+                <h3>
+                  Gastos de la semana
+                </h3>
+
+                <p>
+                  Estos gastos se tendrán en cuenta al calcular
+                  el balance.
+                </p>
+
+              </div>
+
+
+              <button
+                class="text-button"
+                type="button"
+                onclick="cargarGastos()"
+              >
+                Actualizar →
+              </button>
+
+
+            </div>
+
+
+            <div id="listaGastos">
+
+              <div class="empty-state">
+
+                <div class="empty-icon">
+                  💸
+                </div>
+
+                <h3>
+                  No hay gastos para mostrar
+                </h3>
+
+                <p>
+                  Los gastos registrados aparecerán acá.
+                </p>
+
+              </div>
+
+            </div>
+
+
+          </div>
+
+
+        </section>
+
+
+
+        <!-- ==================================================
+             BALANCE
+        =================================================== -->
+
+        <section
+          id="balance"
+          class="section"
+        >
+
+
+          <div class="section-heading">
+
+            <div>
+
+              <span class="eyebrow">
+                ADMINISTRACIÓN
+              </span>
+
+              <h2>
+                Balance semanal
+              </h2>
+
+              <p>
+                Calculá ingresos, gastos y distribución
+                entre los integrantes de RosDrive.
+              </p>
+
+            </div>
+
+          </div>
+
+
+
+          <!-- PERÍODO -->
+
+          <div class="form-panel balance-period-panel">
+
+
+            <div class="form-section-title">
+
+              <span class="form-section-icon">
+                📅
+              </span>
+
+              <div>
+
+                <h3>
+                  Período del balance
+                </h3>
+
+                <p>
+                  Seleccioná la semana que querés cerrar.
+                </p>
+
+              </div>
+
+            </div>
+
+
+            <div class="form-grid">
+
+
+              <div class="field">
+
+                <label>
+                  Desde
+                </label>
+
+                <input
+                  id="balanceDesde"
+                  type="date"
+                >
+
+              </div>
+
+
+              <div class="field">
+
+                <label>
+                  Hasta
+                </label>
+
+                <input
+                  id="balanceHasta"
+                  type="date"
+                >
+
+              </div>
+
+
+              <div class="field balance-button-field">
+
+                <label>
+                  &nbsp;
+                </label>
+
+                <button
+                  class="primary-button"
+                  type="button"
+                  onclick="calcularBalance()"
+                >
+
+                  📊 Calcular balance
+
+                </button>
+
+              </div>
+
+
+            </div>
+
+
+          </div>
+
+
+
+          <!-- RESUMEN -->
+
+          <div
+            id="balanceResumen"
+            class="balance-container"
+          >
+
+
+            <div class="stats-grid balance-stats">
+
+
+              <!-- INGRESOS -->
+
+              <div class="stat-card balance-income">
+
+                <div class="stat-card-top">
+
+                  <div class="stat-icon stat-icon-money">
+                    $
+                  </div>
+
+                  <span class="stat-label">
+                    INGRESOS
+                  </span>
+
+                </div>
+
+                <div class="stat-content">
+
+                  <span>
+                    Total vendido
+                  </span>
+
+                  <strong id="balanceIngresos">
+                    $0
+                  </strong>
+
+                </div>
+
+              </div>
+
+
+              <!-- GASTOS -->
+
+              <div class="stat-card balance-expenses">
+
+                <div class="stat-card-top">
+
+                  <div class="stat-icon">
+                    💸
+                  </div>
+
+                  <span class="stat-label">
+                    GASTOS
+                  </span>
+
+                </div>
+
+                <div class="stat-content">
+
+                  <span>
+                    Total gastos
+                  </span>
+
+                  <strong id="balanceGastos">
+                    $0
+                  </strong>
+
+                </div>
+
+              </div>
+
+
+              <!-- NETO -->
+
+              <div class="stat-card balance-net">
+
+                <div class="stat-card-top">
+
+                  <div class="stat-icon">
+                    💰
+                  </div>
+
+                  <span class="stat-label">
+                    NETO
+                  </span>
+
+                </div>
+
+                <div class="stat-content">
+
+                  <span>
+                    Disponible para distribuir
+                  </span>
+
+                  <strong id="balanceNeto">
+                    $0
+                  </strong>
+
+                </div>
+
+              </div>
+
+
+            </div>
+
+
+
+            <!-- DISTRIBUCIÓN -->
+
+            <div class="panel balance-distribution">
+
+
+              <div class="panel-header">
+
+                <div>
+
+                  <span class="panel-kicker">
+                    DISTRIBUCIÓN
+                  </span>
+
+                  <h3>
+                    Reparto semanal
+                  </h3>
+
+                  <p>
+                    Distribución automática del resultado neto.
+                  </p>
+
+                </div>
+
+
+                <div class="balance-status">
+                  <span
+                    id="balanceEstado"
+                    class="status-badge"
+                  >
+                    PENDIENTE
+                  </span>
+                </div>
+
+              </div>
+
+
+
+              <div class="distribution-list">
+
+
+                <!-- ERIKA -->
+
+                <div class="distribution-item">
+
+                  <div class="distribution-person">
+
+                    <div class="person-avatar">
+                      E
+                    </div>
+
+                    <div>
+
+                      <strong>
+                        Erika
+                      </strong>
+
+                      <small>
+                        Administradora · 45%
+                      </small>
+
+                    </div>
+
+                  </div>
+
+
+                  <div class="distribution-value">
+
+                    <strong id="balanceErika">
+                      $0
+                    </strong>
+
+                    <span>
+                      45%
+                    </span>
+
+                  </div>
+
+
+                  <a
+                    id="whatsappErika"
+                    href="#"
+                    target="_blank"
+                    rel="noopener"
+                    class="whatsapp-button"
+                  >
+
+                    <span>
+                      ☎
+                    </span>
+
+                    WhatsApp
+
+                  </a>
+
+                </div>
+
+
+
+                <!-- BRUNO -->
+
+                <div class="distribution-item">
+
+                  <div class="distribution-person">
+
+                    <div class="person-avatar">
+                      B
+                    </div>
+
+                    <div>
+
+                      <strong>
+                        Bruno
+                      </strong>
+
+                      <small>
+                        Socio · 45%
+                      </small>
+
+                    </div>
+
+                  </div>
+
+
+                  <div class="distribution-value">
+
+                    <strong id="balanceBruno">
+                      $0
+                    </strong>
+
+                    <span>
+                      45%
+                    </span>
+
+                  </div>
+
+
+                  <a
+                    id="whatsappBruno"
+                    href="#"
+                    target="_blank"
+                    rel="noopener"
+                    class="whatsapp-button"
+                  >
+
+                    <span>
+                      ☎
+                    </span>
+
+                    WhatsApp
+
+                  </a>
+
+                </div>
+
+
+
+                <!-- HÉCTOR -->
+
+                <div class="distribution-item">
+
+                  <div class="distribution-person">
+
+                    <div class="person-avatar">
+                      H
+                    </div>
+
+                    <div>
+
+                      <strong>
+                        Héctor
+                      </strong>
+
+                      <small>
+                        Socio · 10%
+                      </small>
+
+                    </div>
+
+                  </div>
+
+
+                  <div class="distribution-value">
+
+                    <strong id="balanceHector">
+                      $0
+                    </strong>
+
+                    <span>
+                      10%
+                    </span>
+
+                  </div>
+
+
+                  <a
+                    id="whatsappHector"
+                    href="#"
+                    target="_blank"
+                    rel="noopener"
+                    class="whatsapp-button"
+                  >
+
+                    <span>
+                      ☎
+                    </span>
+
+                    WhatsApp
+
+                  </a>
+
+                </div>
+
+
+              </div>
+
+
+
+              <!-- CERRAR BALANCE -->
+
+              <div class="balance-close-area">
+
+                <div>
+
+                  <strong>
+                    ¿Terminaste de revisar?
+                  </strong>
+
+                  <small>
+                    Al cerrar el balance quedará registrado
+                    como balance de la semana.
+                  </small>
+
+                </div>
+
+
+                <button
+                  id="btnCerrarBalance"
+                  class="primary-button"
+                  type="button"
+                  onclick="cerrarBalance()"
+                >
+
+                  🔒 Cerrar balance
+
+                </button>
+
+              </div>
+
+
+            </div>
+
+
+
+            <!-- HISTORIAL DE BALANCES -->
+
+            <div class="panel">
+
+
+              <div class="panel-header">
+
+                <div>
+
+                  <span class="panel-kicker">
+                    HISTORIAL
+                  </span>
+
+                  <h3>
+                    Balances anteriores
+                  </h3>
+
+                  <p>
+                    Balances semanales ya cerrados.
+                  </p>
+
+                </div>
+
+
+                <button
+                  class="text-button"
+                  type="button"
+                  onclick="cargarBalances()"
+                >
+                  Actualizar →
+                </button>
+
+              </div>
+
+
+              <div id="listaBalances">
+
+                <div class="empty-state">
+
+                  <div class="empty-icon">
+                    📊
+                  </div>
+
+                  <h3>
+                    No hay balances cerrados
+                  </h3>
+
+                  <p>
+                    Los balances cerrados aparecerán acá.
+                  </p>
+
+                </div>
 
               </div>
 

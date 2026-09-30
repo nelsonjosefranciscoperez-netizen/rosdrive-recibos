@@ -6,7 +6,6 @@
 const API_URL =
   "https://script.google.com/macros/s/AKfycbwoLmnjN23zYnOU4rUJVe8Phvo5_Q5r15dqBrQb_AYIbPjhFBMAdTKoL14M_WNCkxum/exec";
 
-
 /* =====================================================
    VARIABLES
 ===================================================== */
@@ -17,9 +16,33 @@ let recibos = [];
 let servicios = [];
 
 let dashboardData = {};
-
 let ultimoRecibo = null;
 
+/* =====================================================
+   CACHE OPTIMIZADA
+===================================================== */
+
+const API_CACHE_TTL = 120000; // 2 minutos
+
+const apiCache = new Map();
+const apiRequests = new Map();
+
+function limpiarCacheAPI() {
+  apiCache.clear();
+}
+
+function obtenerCacheAPI(action) {
+  const item = apiCache.get(action);
+
+  if (!item) return null;
+
+  if (Date.now() - item.time > API_CACHE_TTL) {
+    apiCache.delete(action);
+    return null;
+  }
+
+  return item.data;
+}
 
 /* =====================================================
    INICIO
@@ -28,54 +51,39 @@ let ultimoRecibo = null;
 document.addEventListener("DOMContentLoaded", async () => {
 
   inicializarNavegacion();
-
   actualizarFecha();
-
   actualizarTotal();
 
-  const servicio =
-    document.getElementById("servicio");
+  const servicio = document.getElementById("servicio");
 
   if (servicio) {
-
     servicio.addEventListener(
       "change",
       actualizarPrecioServicio
     );
-
   }
 
-
-  const precio =
-    document.getElementById("precio");
+  const precio = document.getElementById("precio");
 
   if (precio) {
-
     precio.addEventListener(
       "input",
       actualizarTotal
     );
-
   }
 
-
-  const cantidad =
-    document.getElementById("cantidad");
+  const cantidad = document.getElementById("cantidad");
 
   if (cantidad) {
-
     cantidad.addEventListener(
       "input",
       actualizarTotal
     );
-
   }
-
 
   await cargarDatos();
 
 });
-
 
 /* =====================================================
    NAVEGACIÓN
@@ -90,11 +98,9 @@ function inicializarNavegacion() {
       button.addEventListener(
         "click",
         () => {
-
           mostrarSeccion(
             button.dataset.section
           );
-
         }
       );
 
@@ -102,50 +108,35 @@ function inicializarNavegacion() {
 
 }
 
-
 function mostrarSeccion(section) {
 
   document
     .querySelectorAll(".section")
     .forEach(el => {
-
       el.classList.remove("active");
-
     });
-
 
   document
     .querySelectorAll(".nav-item")
     .forEach(el => {
-
       el.classList.remove("active");
-
     });
-
 
   const destino =
     document.getElementById(section);
 
-
   if (destino) {
-
     destino.classList.add("active");
-
   }
-
 
   const boton =
     document.querySelector(
       `.nav-item[data-section="${section}"]`
     );
 
-
   if (boton) {
-
     boton.classList.add("active");
-
   }
-
 
   const titulos = {
 
@@ -176,35 +167,31 @@ function mostrarSeccion(section) {
 
   };
 
-
   if (titulos[section]) {
 
     const titulo =
-      document.getElementById("page-title");
+      document.getElementById(
+        "page-title"
+      );
 
     const subtitulo =
-      document.getElementById("page-subtitle");
-
+      document.getElementById(
+        "page-subtitle"
+      );
 
     if (titulo) {
-
       titulo.textContent =
         titulos[section][0];
-
     }
 
-
     if (subtitulo) {
-
       subtitulo.textContent =
         titulos[section][1];
-
     }
 
   }
 
 }
-
 
 /* =====================================================
    FECHA
@@ -217,134 +204,200 @@ function actualizarFecha() {
       "fechaActual"
     );
 
+  if (!elemento) return;
 
-  if (!elemento) {
-
-    return;
-
-  }
-
-
-  const fecha =
-    new Date();
-
-
-  const opciones = {
-
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric"
-
-  };
-
+  const fecha = new Date();
 
   elemento.textContent =
     fecha.toLocaleDateString(
       "es-AR",
-      opciones
+      {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      }
     );
 
 }
 
-
 /* =====================================================
-   API GET
+   API GET OPTIMIZADA
 ===================================================== */
 
-async function consultarAPI(action) {
+async function consultarAPI(
+  action,
+  opciones = {}
+) {
+
+  const force =
+    opciones.force === true;
+
+  /*
+   * Si no se fuerza actualización,
+   * utilizamos caché.
+   */
+
+  if (!force) {
+
+    const cache =
+      obtenerCacheAPI(action);
+
+    if (cache) {
+      return cache;
+    }
+
+    /*
+     * Si ya existe una consulta igual
+     * en curso, reutilizamos esa promesa.
+     */
+
+    if (apiRequests.has(action)) {
+      return apiRequests.get(action);
+    }
+
+  }
 
   const url =
     `${API_URL}?action=${encodeURIComponent(action)}`;
 
-
-  const respuesta =
-    await fetch(
+  const promesa =
+    fetch(
       url,
       {
         method: "GET",
         cache: "no-store"
       }
+    )
+
+    .then(
+      async respuesta => {
+
+        if (!respuesta.ok) {
+
+          throw new Error(
+            `Error HTTP ${respuesta.status}`
+          );
+
+        }
+
+        const datos =
+          await respuesta.json();
+
+        if (datos.ok === false) {
+
+          throw new Error(
+            datos.error ||
+            "Error en la API"
+          );
+
+        }
+
+        apiCache.set(
+          action,
+          {
+            time: Date.now(),
+            data: datos
+          }
+        );
+
+        return datos;
+
+      }
+    )
+
+    .finally(
+      () => {
+        apiRequests.delete(action);
+      }
     );
 
+  apiRequests.set(
+    action,
+    promesa
+  );
 
-  if (!respuesta.ok) {
-
-    throw new Error(
-      `Error HTTP ${respuesta.status}`
-    );
-
-  }
-
-
-  const datos =
-    await respuesta.json();
-
-
-  if (datos.ok === false) {
-
-    throw new Error(
-      datos.error ||
-      "Error en la API"
-    );
-
-  }
-
-
-  return datos;
+  return promesa;
 
 }
 
-
 /* =====================================================
    CARGAR DATOS
+   TODAS LAS CONSULTAS EN PARALELO
 ===================================================== */
 
-async function cargarDatos() {
+async function cargarDatos(
+  opciones = {}
+) {
+
+  const force =
+    opciones.force === true;
 
   try {
 
-    /*
-     * DASHBOARD
-     */
+    const resultados =
+      await Promise.allSettled([
 
-    try {
+        consultarAPI(
+          "dashboard",
+          { force }
+        ),
+
+        consultarAPI(
+          "ventas",
+          { force }
+        ),
+
+        consultarAPI(
+          "clientes",
+          { force }
+        ),
+
+        consultarAPI(
+          "recibos",
+          { force }
+        ),
+
+        consultarAPI(
+          "servicios",
+          { force }
+        )
+
+      ]);
+
+    /* DASHBOARD */
+
+    if (
+      resultados[0].status ===
+      "fulfilled"
+    ) {
 
       dashboardData =
-        await consultarAPI(
-          "dashboard"
-        );
-
+        resultados[0].value;
 
       actualizarDashboard(
         dashboardData
       );
 
-    } catch (error) {
+    } else {
 
       console.error(
         "Error Dashboard:",
-        error
+        resultados[0].reason
       );
 
     }
 
+    /* VENTAS */
 
-    /*
-     * VENTAS
-     */
-
-    try {
-
-      const respuestaVentas =
-        await consultarAPI(
-          "ventas"
-        );
-
+    if (
+      resultados[1].status ===
+      "fulfilled"
+    ) {
 
       ventas =
         normalizarLista(
-          respuestaVentas,
+          resultados[1].value,
           [
             "ventas",
             "data",
@@ -352,36 +405,29 @@ async function cargarDatos() {
           ]
         );
 
-
       renderizarVentas(
         ventas
       );
 
-    } catch (error) {
+    } else {
 
       console.error(
         "Error Ventas:",
-        error
+        resultados[1].reason
       );
 
     }
 
+    /* CLIENTES */
 
-    /*
-     * CLIENTES
-     */
-
-    try {
-
-      const respuestaClientes =
-        await consultarAPI(
-          "clientes"
-        );
-
+    if (
+      resultados[2].status ===
+      "fulfilled"
+    ) {
 
       clientes =
         normalizarLista(
-          respuestaClientes,
+          resultados[2].value,
           [
             "clientes",
             "data",
@@ -389,36 +435,29 @@ async function cargarDatos() {
           ]
         );
 
-
       renderizarClientes(
         clientes
       );
 
-    } catch (error) {
+    } else {
 
       console.error(
         "Error Clientes:",
-        error
+        resultados[2].reason
       );
 
     }
 
+    /* RECIBOS */
 
-    /*
-     * RECIBOS
-     */
-
-    try {
-
-      const respuestaRecibos =
-        await consultarAPI(
-          "recibos"
-        );
-
+    if (
+      resultados[3].status ===
+      "fulfilled"
+    ) {
 
       recibos =
         normalizarLista(
-          respuestaRecibos,
+          resultados[3].value,
           [
             "recibos",
             "data",
@@ -426,36 +465,29 @@ async function cargarDatos() {
           ]
         );
 
-
       renderizarRecibos(
         recibos
       );
 
-    } catch (error) {
+    } else {
 
       console.error(
         "Error Recibos:",
-        error
+        resultados[3].reason
       );
 
     }
 
+    /* SERVICIOS */
 
-    /*
-     * SERVICIOS
-     */
-
-    try {
-
-      const respuestaServicios =
-        await consultarAPI(
-          "servicios"
-        );
-
+    if (
+      resultados[4].status ===
+      "fulfilled"
+    ) {
 
       servicios =
         normalizarLista(
-          respuestaServicios,
+          resultados[4].value,
           [
             "servicios",
             "data",
@@ -463,20 +495,18 @@ async function cargarDatos() {
           ]
         );
 
-
       cargarServicios(
         servicios
       );
 
-    } catch (error) {
+    } else {
 
       console.error(
         "Error Servicios:",
-        error
+        resultados[4].reason
       );
 
     }
-
 
     actualizarEstadisticasGenerales();
 
@@ -492,7 +522,6 @@ async function cargarDatos() {
   }
 
 }
-
 
 /* =====================================================
    NORMALIZAR LISTAS
@@ -519,20 +548,13 @@ function normalizarLista(
 
   }
 
-
-  if (
-    Array.isArray(respuesta)
-  ) {
-
+  if (Array.isArray(respuesta)) {
     return respuesta;
-
   }
-
 
   return [];
 
 }
-
 
 /* =====================================================
    DASHBOARD
@@ -547,48 +569,40 @@ function actualizarDashboard(
       data.facturacion || 0
     );
 
-
   const recibosMes =
     Number(
       data.recibos || 0
     );
-
 
   const clientesTotal =
     Number(
       data.clientes || 0
     );
 
-
   const serviciosTotal =
     Number(
       data.servicios || 0
     );
-
 
   const statFacturacion =
     document.getElementById(
       "statFacturacion"
     );
 
-
   const statRecibos =
     document.getElementById(
       "statRecibos"
     );
-
 
   const statClientes =
     document.getElementById(
       "statClientes"
     );
 
-
   const statServicios =
     document.getElementById(
       "statServicios"
     );
-
 
   if (statFacturacion) {
 
@@ -599,37 +613,26 @@ function actualizarDashboard(
 
   }
 
-
   if (statRecibos) {
-
     statRecibos.textContent =
       recibosMes;
-
   }
-
 
   if (statClientes) {
-
     statClientes.textContent =
       clientesTotal;
-
   }
-
 
   if (statServicios) {
-
     statServicios.textContent =
       serviciosTotal;
-
   }
-
 
   renderizarUltimasVentas(
     data.ultimasVentas || []
   );
 
 }
-
 
 /* =====================================================
    ÚLTIMAS VENTAS
@@ -644,13 +647,7 @@ function renderizarUltimasVentas(
       "ultimasVentas"
     );
 
-
-  if (!contenedor) {
-
-    return;
-
-  }
-
+  if (!contenedor) return;
 
   if (
     !lista ||
@@ -680,7 +677,6 @@ function renderizarUltimasVentas(
     return;
 
   }
-
 
   contenedor.innerHTML = `
 
@@ -759,9 +755,8 @@ function renderizarUltimasVentas(
 
 }
 
-
 /* =====================================================
-   ESTADÍSTICAS GENERALES
+   ESTADÍSTICAS
 ===================================================== */
 
 function actualizarEstadisticasGenerales() {
@@ -770,59 +765,43 @@ function actualizarEstadisticasGenerales() {
     dashboardData &&
     dashboardData.ok
   ) {
-
     return;
-
   }
-
 
   const statRecibos =
     document.getElementById(
       "statRecibos"
     );
 
-
   const statClientes =
     document.getElementById(
       "statClientes"
     );
-
 
   const statServicios =
     document.getElementById(
       "statServicios"
     );
 
-
   const statFacturacion =
     document.getElementById(
       "statFacturacion"
     );
 
-
   if (statRecibos) {
-
     statRecibos.textContent =
       recibos.length;
-
   }
-
 
   if (statClientes) {
-
     statClientes.textContent =
       clientes.length;
-
   }
-
 
   if (statServicios) {
-
     statServicios.textContent =
       servicios.length;
-
   }
-
 
   const total =
     ventas.reduce(
@@ -842,7 +821,6 @@ function actualizarEstadisticasGenerales() {
       0
     );
 
-
   if (statFacturacion) {
 
     statFacturacion.textContent =
@@ -853,7 +831,6 @@ function actualizarEstadisticasGenerales() {
   }
 
 }
-
 
 /* =====================================================
    SERVICIOS
@@ -868,16 +845,12 @@ function cargarServicios(
       "servicio"
     );
 
-
   if (
     !select ||
     !lista.length
   ) {
-
     return;
-
   }
-
 
   select.innerHTML = `
 
@@ -886,7 +859,6 @@ function cargarServicios(
     </option>
 
   `;
-
 
   lista.forEach(
     servicio => {
@@ -897,7 +869,6 @@ function cargarServicios(
         servicio.descripcion ||
         "";
 
-
       const precio =
         Number(
           servicio.precio ||
@@ -906,33 +877,23 @@ function cargarServicios(
           0
         );
 
-
-      if (!nombre) {
-
-        return;
-
-      }
-
+      if (!nombre) return;
 
       const option =
         document.createElement(
           "option"
         );
 
-
       option.value =
         nombre;
-
 
       option.textContent =
         `${nombre} - ${formatearDinero(
           precio
         )}`;
 
-
       option.dataset.precio =
         precio;
-
 
       select.appendChild(
         option
@@ -942,7 +903,6 @@ function cargarServicios(
   );
 
 }
-
 
 /* =====================================================
    PRECIO SERVICIO
@@ -955,51 +915,33 @@ function actualizarPrecioServicio() {
       "servicio"
     );
 
-
-  if (!select) {
-
-    return;
-
-  }
-
+  if (!select) return;
 
   const opcion =
     select.options[
       select.selectedIndex
     ];
 
-
-  if (!opcion) {
-
-    return;
-
-  }
-
+  if (!opcion) return;
 
   const precio =
     Number(
       opcion.dataset.precio || 0
     );
 
-
   const campoPrecio =
     document.getElementById(
       "precio"
     );
 
-
   if (campoPrecio) {
-
     campoPrecio.value =
       precio;
-
   }
-
 
   actualizarTotal();
 
 }
-
 
 /* =====================================================
    TOTAL
@@ -1012,31 +954,22 @@ function actualizarTotal() {
       "precio"
     );
 
-
   const campoCantidad =
     document.getElementById(
       "cantidad"
     );
-
 
   const totalElemento =
     document.getElementById(
       "totalVenta"
     );
 
-
-  if (!campoPrecio) {
-
-    return;
-
-  }
-
+  if (!campoPrecio) return;
 
   const precio =
     Number(
       campoPrecio.value
     ) || 0;
-
 
   const cantidad =
     campoCantidad
@@ -1045,10 +978,8 @@ function actualizarTotal() {
         ) || 1
       : 1;
 
-
   const total =
     precio * cantidad;
-
 
   if (totalElemento) {
 
@@ -1061,7 +992,6 @@ function actualizarTotal() {
 
 }
 
-
 /* =====================================================
    GENERAR VENTA
 ===================================================== */
@@ -1069,62 +999,35 @@ function actualizarTotal() {
 async function generarVenta() {
 
   const cliente =
-    obtenerValor(
-      "cliente"
-    );
-
+    obtenerValor("cliente");
 
   const telefono =
-    obtenerValor(
-      "telefono"
-    );
-
+    obtenerValor("telefono");
 
   const direccion =
-    obtenerValor(
-      "direccion"
-    );
-
+    obtenerValor("direccion");
 
   const email =
-    obtenerValor(
-      "email"
-    );
-
+    obtenerValor("email");
 
   const servicio =
-    obtenerValor(
-      "servicio"
-    );
-
+    obtenerValor("servicio");
 
   const precio =
     Number(
-      obtenerValor(
-        "precio"
-      )
+      obtenerValor("precio")
     );
-
 
   const cantidad =
     Number(
-      obtenerValor(
-        "cantidad"
-      )
+      obtenerValor("cantidad")
     ) || 1;
 
-
   const formaPago =
-    obtenerValor(
-      "formaPago"
-    );
-
+    obtenerValor("formaPago");
 
   const estado =
-    obtenerValor(
-      "estado"
-    );
-
+    obtenerValor("estado");
 
   if (!cliente) {
 
@@ -1137,7 +1040,6 @@ async function generarVenta() {
 
   }
 
-
   if (!servicio) {
 
     mostrarToast(
@@ -1148,7 +1050,6 @@ async function generarVenta() {
     return;
 
   }
-
 
   if (
     !precio ||
@@ -1164,12 +1065,10 @@ async function generarVenta() {
 
   }
 
-
   const btn =
     document.getElementById(
       "btnGenerar"
     );
-
 
   if (btn) {
 
@@ -1180,19 +1079,15 @@ async function generarVenta() {
 
   }
 
-
   const datos = {
 
     cliente,
     telefono,
     direccion,
     email,
-
     servicio,
-
     precio,
     cantidad,
-
     formaPago,
     estado,
 
@@ -1200,7 +1095,6 @@ async function generarVenta() {
       new Date().toISOString()
 
   };
-
 
   try {
 
@@ -1212,10 +1106,8 @@ async function generarVenta() {
           method: "POST",
 
           headers: {
-
             "Content-Type":
               "text/plain;charset=utf-8"
-
           },
 
           body:
@@ -1226,7 +1118,6 @@ async function generarVenta() {
         }
       );
 
-
     if (!respuesta.ok) {
 
       throw new Error(
@@ -1235,10 +1126,8 @@ async function generarVenta() {
 
     }
 
-
     const resultado =
       await respuesta.json();
-
 
     if (!resultado.ok) {
 
@@ -1248,7 +1137,6 @@ async function generarVenta() {
       );
 
     }
-
 
     ultimoRecibo = {
 
@@ -1262,32 +1150,34 @@ async function generarVenta() {
         resultado.pdfUrl,
 
       cliente,
-
       telefono,
-
       servicio,
-
       formaPago
 
     };
-
 
     mostrarResultadoRecibo(
       resultado
     );
 
-
     limpiarFormulario();
 
+    /*
+     * Se modificó Sheets:
+     * eliminar caché y actualizar
+     * con datos reales.
+     */
 
-    await cargarDatos();
+    limpiarCacheAPI();
 
+    await cargarDatos({
+      force: true
+    });
 
     mostrarToast(
       "Venta registrada correctamente",
       "success"
     );
-
 
   } catch (error) {
 
@@ -1314,7 +1204,6 @@ async function generarVenta() {
 
 }
 
-
 /* =====================================================
    RESULTADO RECIBO
 ===================================================== */
@@ -1330,13 +1219,11 @@ function mostrarResultadoRecibo(
         : ""
     );
 
-
   const mensaje =
     crearMensajeWhatsApp(
       ultimoRecibo || {},
       resultado
     );
-
 
   const whatsappUrl =
     telefono
@@ -1349,12 +1236,10 @@ function mostrarResultadoRecibo(
           mensaje
         )}`;
 
-
   const resultadoElemento =
     document.getElementById(
       "resultadoRecibo"
     );
-
 
   if (resultadoElemento) {
 
@@ -1390,7 +1275,6 @@ function mostrarResultadoRecibo(
 
       </div>
 
-
       <div
         class="recibo-actions"
         style="
@@ -1407,24 +1291,17 @@ function mostrarResultadoRecibo(
           rel="noopener"
           class="btn btn-primary"
         >
-
           📄 Ver PDF
-
         </a>
-
 
         <a
           href="${whatsappUrl}"
           target="_blank"
           rel="noopener"
           class="btn btn-whatsapp"
-          style="
-            text-decoration:none;
-          "
+          style="text-decoration:none;"
         >
-
           💬 Enviar por WhatsApp
-
         </a>
 
       </div>
@@ -1433,12 +1310,10 @@ function mostrarResultadoRecibo(
 
   }
 
-
   const modal =
     document.getElementById(
       "modalRecibo"
     );
-
 
   if (modal) {
 
@@ -1450,9 +1325,8 @@ function mostrarResultadoRecibo(
 
 }
 
-
 /* =====================================================
-   MENSAJE WHATSAPP
+   WHATSAPP
 ===================================================== */
 
 function crearMensajeWhatsApp(
@@ -1465,33 +1339,27 @@ function crearMensajeWhatsApp(
     datos.numero ||
     "";
 
-
   const cliente =
     datos.cliente ||
     "cliente";
 
-
   const servicio =
     datos.servicio ||
     "";
-
 
   const total =
     resultado.total ||
     datos.total ||
     0;
 
-
   const formaPago =
     datos.formaPago ||
     "";
-
 
   const pdf =
     resultado.pdfUrl ||
     datos.pdfUrl ||
     "";
-
 
   return `Hola ${cliente} 👋
 
@@ -1511,8 +1379,8 @@ Te enviamos tu recibo de RosDrive 🚗
 ${pdf}
 
 ¡Gracias por confiar en RosDrive!`;
-}
 
+}
 
 /* =====================================================
    NORMALIZAR WHATSAPP
@@ -1530,31 +1398,13 @@ function normalizarWhatsApp(
       ""
     );
 
-
-  if (!numero) {
-
-    return "";
-
-  }
-
-
-  /*
-   * Argentina:
-   * +54 9 341 ...
-   */
+  if (!numero) return "";
 
   if (
     numero.startsWith("549")
   ) {
-
     return numero;
-
   }
-
-
-  /*
-   * 54 + celular
-   */
 
   if (
     numero.startsWith("54")
@@ -1567,11 +1417,6 @@ function normalizarWhatsApp(
 
   }
 
-
-  /*
-   * Eliminar 0 inicial
-   */
-
   if (
     numero.startsWith("0")
   ) {
@@ -1580,11 +1425,6 @@ function normalizarWhatsApp(
       numero.substring(1);
 
   }
-
-
-  /*
-   * Eliminar 15 de celular
-   */
 
   if (
     numero.startsWith("15")
@@ -1595,14 +1435,12 @@ function normalizarWhatsApp(
 
   }
 
-
   return (
     "549" +
     numero
   );
 
 }
-
 
 /* =====================================================
    CERRAR MODAL
@@ -1615,7 +1453,6 @@ function cerrarModal() {
       "modalRecibo"
     );
 
-
   if (modal) {
 
     modal.classList.remove(
@@ -1626,7 +1463,6 @@ function cerrarModal() {
 
 }
 
-
 /* =====================================================
    LIMPIAR FORMULARIO
 ===================================================== */
@@ -1634,14 +1470,11 @@ function cerrarModal() {
 function limpiarFormulario() {
 
   const campos = [
-
     "cliente",
     "telefono",
     "direccion",
     "email"
-
   ];
-
 
   campos.forEach(
     id => {
@@ -1651,92 +1484,63 @@ function limpiarFormulario() {
           id
         );
 
-
       if (elemento) {
-
-        elemento.value =
-          "";
-
+        elemento.value = "";
       }
 
     }
   );
-
 
   const servicio =
     document.getElementById(
       "servicio"
     );
 
-
   if (servicio) {
-
-    servicio.value =
-      "";
-
+    servicio.value = "";
   }
-
 
   const precio =
     document.getElementById(
       "precio"
     );
 
-
   if (precio) {
-
-    precio.value =
-      "0";
-
+    precio.value = "0";
   }
-
 
   const cantidad =
     document.getElementById(
       "cantidad"
     );
 
-
   if (cantidad) {
-
-    cantidad.value =
-      "1";
-
+    cantidad.value = "1";
   }
-
 
   const formaPago =
     document.getElementById(
       "formaPago"
     );
 
-
   if (formaPago) {
-
     formaPago.value =
       "Transferencia";
-
   }
-
 
   const estado =
     document.getElementById(
       "estado"
     );
 
-
   if (estado) {
-
     estado.value =
       "PAGADO";
-
   }
-
 
   actualizarTotal();
 
 }
-
 
 /* =====================================================
    RECIBOS - FILTRO
@@ -1749,14 +1553,12 @@ function filtrarRecibos() {
       "buscarRecibo"
     );
 
-
   const texto =
     campo
       ? campo.value
           .toLowerCase()
           .trim()
       : "";
-
 
   const filtrados =
     recibos.filter(
@@ -1770,9 +1572,7 @@ function filtrarRecibos() {
             ""
           )
             .toLowerCase()
-            .includes(
-              texto
-            )
+            .includes(texto)
 
           ||
 
@@ -1781,22 +1581,18 @@ function filtrarRecibos() {
             ""
           )
             .toLowerCase()
-            .includes(
-              texto
-            )
+            .includes(texto)
 
         );
 
       }
     );
 
-
   renderizarRecibos(
     filtrados
   );
 
 }
-
 
 /* =====================================================
    RECIBOS - RENDER
@@ -1811,13 +1607,7 @@ function renderizarRecibos(
       "listaRecibos"
     );
 
-
-  if (!contenedor) {
-
-    return;
-
-  }
-
+  if (!contenedor) return;
 
   if (!lista.length) {
 
@@ -1844,7 +1634,6 @@ function renderizarRecibos(
     return;
 
   }
-
 
   contenedor.innerHTML = `
 
@@ -1876,27 +1665,22 @@ function renderizarRecibos(
               recibo.recibo ||
               "";
 
-
             const pdf =
               recibo.pdf ||
               recibo.pdfUrl ||
               "";
-
 
             return `
 
               <tr>
 
                 <td>
-
                   <strong>
                     ${escaparHTML(
                       numero || "-"
                     )}
                   </strong>
-
                 </td>
-
 
                 <td>
                   ${escaparHTML(
@@ -1904,13 +1688,11 @@ function renderizarRecibos(
                   )}
                 </td>
 
-
                 <td>
                   ${escaparHTML(
                     recibo.cliente || "-"
                   )}
                 </td>
-
 
                 <td>
                   ${escaparHTML(
@@ -1918,20 +1700,17 @@ function renderizarRecibos(
                   )}
                 </td>
 
-
                 <td>
                   ${formatearDinero(
                     recibo.total
                   )}
                 </td>
 
-
                 <td>
                   ${crearBadgeEstado(
                     recibo.estado
                   )}
                 </td>
-
 
                 <td>
 
@@ -1946,25 +1725,18 @@ function renderizarRecibos(
 
                     ${
                       pdf
-
                         ? `
-
                           <a
                             href="${pdf}"
                             target="_blank"
                             rel="noopener"
                             class="pdf-link"
                           >
-
                             📄 Ver
-
                           </a>
-
                         `
-
                         : ""
                     }
-
 
                     <button
                       type="button"
@@ -1972,13 +1744,9 @@ function renderizarRecibos(
                       onclick="eliminarRecibo('${escaparAtributo(
                         numero
                       )}')"
-                      style="
-                        cursor:pointer;
-                      "
+                      style="cursor:pointer;"
                     >
-
                       🗑️ Eliminar
-
                     </button>
 
                   </div>
@@ -2000,7 +1768,6 @@ function renderizarRecibos(
 
 }
 
-
 /* =====================================================
    ELIMINAR RECIBO
 ===================================================== */
@@ -2020,20 +1787,13 @@ async function eliminarRecibo(
 
   }
 
-
   const confirmado =
     confirm(
       `¿Seguro que querés eliminar el recibo Nº ${numero}?\n\n` +
       `Se eliminará la venta del balance y el PDF asociado de Drive.`
     );
 
-
-  if (!confirmado) {
-
-    return;
-
-  }
-
+  if (!confirmado) return;
 
   try {
 
@@ -2041,7 +1801,6 @@ async function eliminarRecibo(
       "Eliminando recibo...",
       "success"
     );
-
 
     const respuesta =
       await fetch(
@@ -2051,10 +1810,8 @@ async function eliminarRecibo(
           method: "POST",
 
           headers: {
-
             "Content-Type":
               "text/plain;charset=utf-8"
-
           },
 
           body:
@@ -2071,7 +1828,6 @@ async function eliminarRecibo(
         }
       );
 
-
     if (!respuesta.ok) {
 
       throw new Error(
@@ -2080,10 +1836,8 @@ async function eliminarRecibo(
 
     }
 
-
     const resultado =
       await respuesta.json();
-
 
     if (!resultado.ok) {
 
@@ -2094,14 +1848,22 @@ async function eliminarRecibo(
 
     }
 
-
     mostrarToast(
       `Recibo Nº ${numero} eliminado correctamente`,
       "success"
     );
 
+    /*
+     * MUY IMPORTANTE:
+     * después de eliminar hay que
+     * actualizar los datos reales.
+     */
 
-    await cargarDatos();
+    limpiarCacheAPI();
+
+    await cargarDatos({
+      force: true
+    });
 
   } catch (error) {
 
@@ -2117,7 +1879,6 @@ async function eliminarRecibo(
 
 }
 
-
 /* =====================================================
    CLIENTES - FILTRO
 ===================================================== */
@@ -2129,14 +1890,12 @@ function filtrarClientes() {
       "buscarCliente"
     );
 
-
   const texto =
     campo
       ? campo.value
           .toLowerCase()
           .trim()
       : "";
-
 
   const filtrados =
     clientes.filter(
@@ -2149,9 +1908,7 @@ function filtrarClientes() {
             ""
           )
             .toLowerCase()
-            .includes(
-              texto
-            )
+            .includes(texto)
 
           ||
 
@@ -2160,9 +1917,7 @@ function filtrarClientes() {
             ""
           )
             .toLowerCase()
-            .includes(
-              texto
-            )
+            .includes(texto)
 
           ||
 
@@ -2171,22 +1926,18 @@ function filtrarClientes() {
             ""
           )
             .toLowerCase()
-            .includes(
-              texto
-            )
+            .includes(texto)
 
         );
 
       }
     );
 
-
   renderizarClientes(
     filtrados
   );
 
 }
-
 
 /* =====================================================
    CLIENTES - RENDER
@@ -2201,13 +1952,7 @@ function renderizarClientes(
       "listaClientes"
     );
 
-
-  if (!contenedor) {
-
-    return;
-
-  }
-
+  if (!contenedor) return;
 
   if (!lista.length) {
 
@@ -2234,7 +1979,6 @@ function renderizarClientes(
     return;
 
   }
-
 
   contenedor.innerHTML = `
 
@@ -2306,7 +2050,6 @@ function renderizarClientes(
 
 }
 
-
 /* =====================================================
    VENTAS - FILTRO
 ===================================================== */
@@ -2318,12 +2061,10 @@ function filtrarVentas() {
       "buscarVenta"
     );
 
-
   const filtroPago =
     document.getElementById(
       "filtroPago"
     );
-
 
   const texto =
     campo
@@ -2332,12 +2073,10 @@ function filtrarVentas() {
           .trim()
       : "";
 
-
   const pago =
     filtroPago
       ? filtroPago.value
       : "";
-
 
   const filtradas =
     ventas.filter(
@@ -2350,9 +2089,7 @@ function filtrarVentas() {
             ""
           )
             .toLowerCase()
-            .includes(
-              texto
-            )
+            .includes(texto)
 
           ||
 
@@ -2361,9 +2098,7 @@ function filtrarVentas() {
             ""
           )
             .toLowerCase()
-            .includes(
-              texto
-            )
+            .includes(texto)
 
           ||
 
@@ -2372,15 +2107,11 @@ function filtrarVentas() {
             ""
           )
             .toLowerCase()
-            .includes(
-              texto
-            );
-
+            .includes(texto);
 
         const coincidePago =
           !pago ||
           venta.pago === pago;
-
 
         return (
           coincideTexto &&
@@ -2390,13 +2121,11 @@ function filtrarVentas() {
       }
     );
 
-
   renderizarVentas(
     filtradas
   );
 
 }
-
 
 /* =====================================================
    VENTAS - RENDER
@@ -2411,13 +2140,7 @@ function renderizarVentas(
       "tablaVentas"
     );
 
-
-  if (!contenedor) {
-
-    return;
-
-  }
-
+  if (!contenedor) return;
 
   if (!lista.length) {
 
@@ -2444,7 +2167,6 @@ function renderizarVentas(
     return;
 
   }
-
 
   contenedor.innerHTML = `
 
@@ -2532,7 +2254,6 @@ function renderizarVentas(
 
 }
 
-
 /* =====================================================
    BADGE ESTADO
 ===================================================== */
@@ -2548,7 +2269,6 @@ function crearBadgeEstado(
     )
       .toUpperCase();
 
-
   if (
     valor === "PENDIENTE"
   ) {
@@ -2556,15 +2276,12 @@ function crearBadgeEstado(
     return `
 
       <span class="badge badge-pending">
-
         PENDIENTE
-
       </span>
 
     `;
 
   }
-
 
   return `
 
@@ -2579,7 +2296,6 @@ function crearBadgeEstado(
   `;
 
 }
-
 
 /* =====================================================
    FORMATO DINERO
@@ -2609,7 +2325,6 @@ function formatearDinero(
 
 }
 
-
 /* =====================================================
    OBTENER VALOR
 ===================================================== */
@@ -2623,20 +2338,15 @@ function obtenerValor(
       id
     );
 
-
   if (!elemento) {
-
     return "";
-
   }
-
 
   return String(
     elemento.value || ""
   ).trim();
 
 }
-
 
 /* =====================================================
    ESCAPAR HTML
@@ -2672,9 +2382,8 @@ function escaparHTML(
 
 }
 
-
 /* =====================================================
-   ESCAPAR ATRIBUTOS
+   ESCAPAR ATRIBUTO
 ===================================================== */
 
 function escaparAtributo(
@@ -2691,7 +2400,6 @@ function escaparAtributo(
 
 }
 
-
 /* =====================================================
    TOAST
 ===================================================== */
@@ -2706,13 +2414,7 @@ function mostrarToast(
       "toast"
     );
 
-
   if (!toast) {
-
-    /*
-     * Fallback si todavía no existe
-     * el componente visual del toast.
-     */
 
     alert(mensaje);
 
@@ -2720,18 +2422,15 @@ function mostrarToast(
 
   }
 
-
   const icon =
     document.getElementById(
       "toastIcon"
     );
 
-
   const text =
     document.getElementById(
       "toastMessage"
     );
-
 
   if (icon) {
 
@@ -2742,7 +2441,6 @@ function mostrarToast(
 
   }
 
-
   if (text) {
 
     text.textContent =
@@ -2750,11 +2448,9 @@ function mostrarToast(
 
   }
 
-
   toast.classList.add(
     "show"
   );
-
 
   setTimeout(
     () => {

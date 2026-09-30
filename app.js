@@ -1,200 +1,281 @@
-/******************************************************
+/************************************************************
  * ROSDRIVE - APP WEB
  * GitHub Pages ↔ Google Apps Script ↔ Google Sheets
- ******************************************************/
+ ************************************************************/
 
 const API_URL =
   "https://script.google.com/macros/s/AKfycbwoLmnjN23zYnOU4rUJVe8Phvo5_Q5r15dqBrQb_AYIbPjhFBMAdTKoL14M_WNCkxum/exec";
 
+/* =========================================================
+   CONFIGURACIÓN
+========================================================= */
 
-/* =====================================================
+const API_CACHE_TTL = 120000;
+
+const SOCIOS = {
+  Erika: "",
+  Bruno: "",
+  Hector: ""
+};
+
+const PORCENTAJES = {
+  Erika: 45,
+  Bruno: 45,
+  Hector: 10
+};
+
+/* =========================================================
    VARIABLES
-===================================================== */
+========================================================= */
 
 let ventas = [];
 let clientes = [];
 let recibos = [];
 let servicios = [];
+let gastos = [];
 
 let dashboardData = {};
-
 let ultimoRecibo = null;
+let ultimoBalance = null;
 
+let balanceInicializado = false;
 
-/* =====================================================
+const apiCache = new Map();
+const apiRequests = new Map();
+
+/* =========================================================
+   CACHE
+========================================================= */
+
+function limpiarCacheAPI() {
+  apiCache.clear();
+}
+
+function obtenerCacheAPI(action) {
+
+  const item =
+    apiCache.get(action);
+
+  if (!item) {
+    return null;
+  }
+
+  if (
+    Date.now() - item.time >
+    API_CACHE_TTL
+  ) {
+
+    apiCache.delete(action);
+
+    return null;
+
+  }
+
+  return item.data;
+
+}
+
+/* =========================================================
    INICIO
-===================================================== */
+========================================================= */
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener(
+  "DOMContentLoaded",
+  () => {
 
-  inicializarNavegacion();
+    mostrarPantallaCarga();
 
-  actualizarFecha();
+    try {
 
-  actualizarTotal();
+      inicializarNavegacion();
 
-  const servicio =
-    document.getElementById("servicio");
+      actualizarFecha();
 
-  if (servicio) {
+      actualizarTotal();
 
-    servicio.addEventListener(
-      "change",
-      actualizarPrecioServicio
-    );
+      const servicio =
+        document.getElementById(
+          "servicio"
+        );
 
-  }
+      if (servicio) {
 
+        servicio.addEventListener(
+          "change",
+          actualizarPrecioServicio
+        );
 
-  const precio =
-    document.getElementById("precio");
+      }
 
-  if (precio) {
+      const precio =
+        document.getElementById(
+          "precio"
+        );
 
-    precio.addEventListener(
-      "input",
-      actualizarTotal
-    );
+      if (precio) {
 
-  }
+        precio.addEventListener(
+          "input",
+          actualizarTotal
+        );
 
+      }
 
-  const cantidad =
-    document.getElementById("cantidad");
+      const cantidad =
+        document.getElementById(
+          "cantidad"
+        );
 
-  if (cantidad) {
+      if (cantidad) {
 
-    cantidad.addEventListener(
-      "input",
-      actualizarTotal
-    );
+        cantidad.addEventListener(
+          "input",
+          actualizarTotal
+        );
 
-  }
+      }
 
+      inicializarBalance();
 
-  mostrarMensajeCarga("Conectando con RosDrive...");
+      inicializarGastos();
 
-  // La carga de Google Apps Script no puede bloquear
-  // indefinidamente la pantalla.
-  const cargaDatos = cargarDatos();
+      const cargaDatos =
+        cargarDatos();
 
-  const tiempoMaximoCarga = new Promise(resolve => {
-    setTimeout(resolve, 3500);
-  });
+      const tiempoMaximoCarga =
+        new Promise(
+          resolve => {
 
-  Promise.race([cargaDatos, tiempoMaximoCarga])
-    .catch(error => {
-      console.error("Error cargando datos:", error);
-    })
-    .finally(() => {
+            setTimeout(
+              resolve,
+              3500
+            );
+
+          }
+        );
+
+      Promise.race([
+        cargaDatos,
+        tiempoMaximoCarga
+      ])
+        .catch(
+          error => {
+
+            console.error(
+              "Error cargando datos:",
+              error
+            );
+
+          }
+        )
+        .finally(
+          () => {
+
+            ocultarPantallaCarga();
+
+          }
+        );
+
+    } catch (error) {
+
+      console.error(
+        "Error iniciando RosDrive:",
+        error
+      );
+
       ocultarPantallaCarga();
-    });
 
-});
-
-
-/* =====================================================
-   PANTALLA DE CARGA
-===================================================== */
-
-function mostrarMensajeCarga(mensaje) {
-
-  const elemento =
-    document.getElementById("loadingMessage");
-
-  if (elemento) {
-    elemento.textContent = mensaje;
-  }
-
-}
-
-function ocultarPantallaCarga() {
-
-  const pantalla =
-    document.getElementById("loadingScreen");
-
-  if (!pantalla) return;
-
-  pantalla.classList.add("hidden");
-
-  setTimeout(() => {
-    if (pantalla && pantalla.parentNode) {
-      pantalla.remove();
     }
-  }, 550);
 
-}
+  }
+);
 
-
-/* =====================================================
+/* =========================================================
    NAVEGACIÓN
-===================================================== */
+========================================================= */
 
 function inicializarNavegacion() {
 
   document
-    .querySelectorAll(".nav-item")
-    .forEach(button => {
+    .querySelectorAll(
+      ".nav-item"
+    )
+    .forEach(
+      button => {
 
-      button.addEventListener(
-        "click",
-        () => {
+        button.addEventListener(
+          "click",
+          () => {
 
-          mostrarSeccion(
-            button.dataset.section
-          );
+            mostrarSeccion(
+              button.dataset.section
+            );
 
-        }
-      );
+          }
+        );
 
-    });
+      }
+    );
 
 }
 
-
-function mostrarSeccion(section) {
-
-  document
-    .querySelectorAll(".section")
-    .forEach(el => {
-
-      el.classList.remove("active");
-
-    });
-
+function mostrarSeccion(
+  section
+) {
 
   document
-    .querySelectorAll(".nav-item")
-    .forEach(el => {
+    .querySelectorAll(
+      ".section"
+    )
+    .forEach(
+      el => {
 
-      el.classList.remove("active");
+        el.classList.remove(
+          "active"
+        );
 
-    });
+      }
+    );
 
+  document
+    .querySelectorAll(
+      ".nav-item"
+    )
+    .forEach(
+      el => {
+
+        el.classList.remove(
+          "active"
+        );
+
+      }
+    );
 
   const destino =
-    document.getElementById(section);
-
+    document.getElementById(
+      section
+    );
 
   if (destino) {
 
-    destino.classList.add("active");
+    destino.classList.add(
+      "active"
+    );
 
   }
-
 
   const boton =
     document.querySelector(
       `.nav-item[data-section="${section}"]`
     );
 
-
   if (boton) {
 
-    boton.classList.add("active");
+    boton.classList.add(
+      "active"
+    );
 
   }
-
 
   const titulos = {
 
@@ -221,19 +302,31 @@ function mostrarSeccion(section) {
     ventas: [
       "Ventas",
       "Historial de operaciones"
+    ],
+
+    gastos: [
+      "Gastos",
+      "Registrar y consultar gastos"
+    ],
+
+    balance: [
+      "Balance",
+      "Balance semanal y distribución"
     ]
 
   };
 
-
   if (titulos[section]) {
 
     const titulo =
-      document.getElementById("page-title");
+      document.getElementById(
+        "page-title"
+      );
 
     const subtitulo =
-      document.getElementById("page-subtitle");
-
+      document.getElementById(
+        "page-subtitle"
+      );
 
     if (titulo) {
 
@@ -241,7 +334,6 @@ function mostrarSeccion(section) {
         titulos[section][0];
 
     }
-
 
     if (subtitulo) {
 
@@ -252,12 +344,17 @@ function mostrarSeccion(section) {
 
   }
 
+  if (section === "balance") {
+
+    inicializarBalance();
+
+  }
+
 }
 
-
-/* =====================================================
+/* =========================================================
    FECHA
-===================================================== */
+========================================================= */
 
 function actualizarFecha() {
 
@@ -266,142 +363,218 @@ function actualizarFecha() {
       "fechaActual"
     );
 
-
   if (!elemento) {
-
     return;
-
   }
-
 
   const fecha =
     new Date();
 
-
-  const opciones = {
-
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric"
-
-  };
-
-
   elemento.textContent =
     fecha.toLocaleDateString(
       "es-AR",
-      opciones
+      {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      }
     );
 
 }
 
+/* =========================================================
+   PANTALLA DE CARGA
+========================================================= */
 
-/* =====================================================
-   API GET - OPTIMIZADA CON CACHE
-===================================================== */
+function mostrarPantallaCarga() {
 
-const API_CACHE_TTL = 30000; // 30 segundos
-const apiCache = new Map();
-const apiRequests = new Map();
+  const pantalla =
+    document.getElementById(
+      "loadingScreen"
+    );
 
-async function consultarAPI(action, opciones = {}) {
-
-  const force = opciones.force === true;
-  const ahora = Date.now();
-  const cacheado = apiCache.get(action);
-
-  if (!force && cacheado && (ahora - cacheado.time) < API_CACHE_TTL) {
-    return cacheado.data;
+  if (!pantalla) {
+    return;
   }
 
-  // Si ya hay una petición en curso para la misma acción,
-  // reutilizamos esa petición en lugar de hacer otra.
-  if (!force && apiRequests.has(action)) {
-    return apiRequests.get(action);
+  pantalla.classList.remove(
+    "hidden"
+  );
+
+  pantalla.style.opacity =
+    "1";
+
+  pantalla.style.visibility =
+    "visible";
+
+  pantalla.style.pointerEvents =
+    "auto";
+
+}
+
+function ocultarPantallaCarga() {
+
+  const pantalla =
+    document.getElementById(
+      "loadingScreen"
+    );
+
+  if (!pantalla) {
+    return;
+  }
+
+  pantalla.classList.add(
+    "hidden"
+  );
+
+  pantalla.style.opacity =
+    "0";
+
+  pantalla.style.visibility =
+    "hidden";
+
+  pantalla.style.pointerEvents =
+    "none";
+
+  setTimeout(
+    () => {
+
+      if (
+        pantalla &&
+        pantalla.parentNode
+      ) {
+
+        pantalla.remove();
+
+      }
+
+    },
+    550
+  );
+
+}
+
+/* =========================================================
+   API GET
+========================================================= */
+
+async function consultarAPI(
+  action,
+  opciones = {}
+) {
+
+  const force =
+    opciones.force === true;
+
+  if (!force) {
+
+    const cache =
+      obtenerCacheAPI(
+        action
+      );
+
+    if (cache) {
+
+      return cache;
+
+    }
+
+    if (
+      apiRequests.has(
+        action
+      )
+    ) {
+
+      return apiRequests.get(
+        action
+      );
+
+    }
+
   }
 
   const url =
-    `${API_URL}?action=${encodeURIComponent(action)}`;
+    `${API_URL}?action=${encodeURIComponent(
+      action
+    )}`;
 
-  const promesa = fetch(url, {
-    method: "GET",
-    cache: "no-store"
-  })
-    .then(async respuesta => {
-
-      if (!respuesta.ok) {
-
-        throw new Error(
-          `Error HTTP ${respuesta.status}`
-        );
-
+  const promesa =
+    fetch(
+      url,
+      {
+        method: "GET",
+        cache: "no-store"
       }
+    )
+      .then(
+        async respuesta => {
 
-      const datos =
-        await respuesta.json();
+          if (!respuesta.ok) {
 
+            throw new Error(
+              `Error HTTP ${respuesta.status}`
+            );
 
-      if (datos.ok === false) {
+          }
 
-        throw new Error(
-          datos.error ||
-          "Error en la API"
-        );
+          const datos =
+            await respuesta.json();
 
-      }
+          if (
+            datos.ok === false
+          ) {
 
+            throw new Error(
+              datos.error ||
+              "Error en la API"
+            );
 
-      apiCache.set(action, {
-        time: Date.now(),
-        data: datos
-      });
+          }
 
+          apiCache.set(
+            action,
+            {
+              time: Date.now(),
+              data: datos
+            }
+          );
 
-      return datos;
+          return datos;
 
-    })
-    .finally(() => {
+        }
+      )
+      .finally(
+        () => {
 
-      apiRequests.delete(action);
+          apiRequests.delete(
+            action
+          );
 
-    });
-
+        }
+      );
 
   apiRequests.set(
     action,
     promesa
   );
 
-
   return promesa;
 
 }
 
+/* =========================================================
+   CARGAR DATOS
+========================================================= */
 
-function limpiarCacheAPI() {
-
-  apiCache.clear();
-
-}
-
-
-/* =====================================================
-   CARGAR DATOS - TODAS LAS CONSULTAS EN PARALELO
-===================================================== */
-
-async function cargarDatos(opciones = {}) {
+async function cargarDatos(
+  opciones = {}
+) {
 
   const force =
     opciones.force === true;
 
-
   try {
-
-    mostrarMensajeCarga(
-      "Cargando información de RosDrive..."
-    );
-
 
     const resultados =
       await Promise.allSettled([
@@ -429,10 +602,14 @@ async function cargarDatos(opciones = {}) {
         consultarAPI(
           "servicios",
           { force }
+        ),
+
+        consultarAPI(
+          "gastos",
+          { force }
         )
 
       ]);
-
 
     /* DASHBOARD */
 
@@ -443,7 +620,6 @@ async function cargarDatos(opciones = {}) {
 
       dashboardData =
         resultados[0].value;
-
 
       actualizarDashboard(
         dashboardData
@@ -457,7 +633,6 @@ async function cargarDatos(opciones = {}) {
       );
 
     }
-
 
     /* VENTAS */
 
@@ -476,7 +651,6 @@ async function cargarDatos(opciones = {}) {
           ]
         );
 
-
       renderizarVentas(
         ventas
       );
@@ -489,7 +663,6 @@ async function cargarDatos(opciones = {}) {
       );
 
     }
-
 
     /* CLIENTES */
 
@@ -508,7 +681,6 @@ async function cargarDatos(opciones = {}) {
           ]
         );
 
-
       renderizarClientes(
         clientes
       );
@@ -521,7 +693,6 @@ async function cargarDatos(opciones = {}) {
       );
 
     }
-
 
     /* RECIBOS */
 
@@ -540,7 +711,6 @@ async function cargarDatos(opciones = {}) {
           ]
         );
 
-
       renderizarRecibos(
         recibos
       );
@@ -553,7 +723,6 @@ async function cargarDatos(opciones = {}) {
       );
 
     }
-
 
     /* SERVICIOS */
 
@@ -572,7 +741,6 @@ async function cargarDatos(opciones = {}) {
           ]
         );
 
-
       cargarServicios(
         servicios
       );
@@ -586,14 +754,45 @@ async function cargarDatos(opciones = {}) {
 
     }
 
+    /* GASTOS */
+
+    if (
+      resultados[5].status ===
+      "fulfilled"
+    ) {
+
+      gastos =
+        normalizarLista(
+          resultados[5].value,
+          [
+            "gastos",
+            "data",
+            "resultado"
+          ]
+        );
+
+      renderizarGastos(
+        gastos
+      );
+
+    } else {
+
+      console.warn(
+        "No se pudieron cargar los gastos:",
+        resultados[5].reason
+      );
+
+      gastos = [];
+
+    }
 
     actualizarEstadisticasGenerales();
 
-
   } catch (error) {
 
-    console.error(error);
-
+    console.error(
+      error
+    );
 
     mostrarToast(
       "No se pudieron cargar los datos",
@@ -604,169 +803,52 @@ async function cargarDatos(opciones = {}) {
 
 }
 
-
-/* =====================================================
+/* =========================================================
    NORMALIZAR LISTAS
-===================================================== */
+========================================================= */
 
 function normalizarLista(
   respuesta,
   posiblesPropiedades
 ) {
 
-  if (!respuesta) return [];
+  if (!respuesta) {
+    return [];
+  }
 
+  for (
+    const propiedad of posiblesPropiedades
+  ) {
 
-  // 1) Respuesta directamente como array.
-  if (Array.isArray(respuesta)) {
+    if (
+      Array.isArray(
+        respuesta[propiedad]
+      )
+    ) {
+
+      return respuesta[propiedad];
+
+    }
+
+  }
+
+  if (
+    Array.isArray(
+      respuesta
+    )
+  ) {
 
     return respuesta;
 
   }
 
-
-  // 2) Buscar las propiedades habituales en cualquier nivel
-  //    (por ejemplo: { data: { ventas: [...] } }).
-
-  const clavesBuscadas =
-    posiblesPropiedades.map(
-      clave =>
-        String(clave)
-          .toLowerCase()
-    );
-
-
-  const visitados =
-    new Set();
-
-
-  function buscar(
-    obj,
-    profundidad = 0
-  ) {
-
-    if (
-      !obj ||
-      typeof obj !== "object"
-    ) {
-
-      return null;
-
-    }
-
-
-    if (
-      visitados.has(obj) ||
-      profundidad > 6
-    ) {
-
-      return null;
-
-    }
-
-
-    visitados.add(obj);
-
-
-    if (Array.isArray(obj)) {
-
-      return obj;
-
-    }
-
-
-    // Primero buscamos por nombre exacto de propiedad.
-
-    for (
-      const clave of Object.keys(obj)
-    ) {
-
-      const nombre =
-        String(clave)
-          .toLowerCase()
-          .trim();
-
-
-      if (
-        clavesBuscadas.includes(nombre)
-      ) {
-
-        if (
-          Array.isArray(
-            obj[clave]
-          )
-        ) {
-
-          return obj[clave];
-
-        }
-
-
-        const resultado =
-          buscar(
-            obj[clave],
-            profundidad + 1
-          );
-
-
-        if (resultado) return resultado;
-
-      }
-
-    }
-
-
-    // Después recorremos objetos anidados.
-
-    for (
-      const clave of Object.keys(obj)
-    ) {
-
-      const valor =
-        obj[clave];
-
-
-      if (
-        !valor ||
-        typeof valor !== "object"
-      ) {
-
-        continue;
-
-      }
-
-
-      const resultado =
-        buscar(
-          valor,
-          profundidad + 1
-        );
-
-
-      if (resultado) return resultado;
-
-    }
-
-
-    return null;
-
-  }
-
-
-  const resultado =
-    buscar(respuesta);
-
-
-  return Array.isArray(resultado)
-    ? resultado
-    : [];
+  return [];
 
 }
 
-
-/* =====================================================
+/* =========================================================
    DASHBOARD
-===================================================== */
+========================================================= */
 
 function actualizarDashboard(
   data
@@ -777,48 +859,40 @@ function actualizarDashboard(
       data.facturacion || 0
     );
 
-
   const recibosMes =
     Number(
       data.recibos || 0
     );
-
 
   const clientesTotal =
     Number(
       data.clientes || 0
     );
 
-
   const serviciosTotal =
     Number(
       data.servicios || 0
     );
-
 
   const statFacturacion =
     document.getElementById(
       "statFacturacion"
     );
 
-
   const statRecibos =
     document.getElementById(
       "statRecibos"
     );
-
 
   const statClientes =
     document.getElementById(
       "statClientes"
     );
 
-
   const statServicios =
     document.getElementById(
       "statServicios"
     );
-
 
   if (statFacturacion) {
 
@@ -829,14 +903,12 @@ function actualizarDashboard(
 
   }
 
-
   if (statRecibos) {
 
     statRecibos.textContent =
       recibosMes;
 
   }
-
 
   if (statClientes) {
 
@@ -845,7 +917,6 @@ function actualizarDashboard(
 
   }
 
-
   if (statServicios) {
 
     statServicios.textContent =
@@ -853,17 +924,15 @@ function actualizarDashboard(
 
   }
 
-
   renderizarUltimasVentas(
     data.ultimasVentas || []
   );
 
 }
 
-
-/* =====================================================
+/* =========================================================
    ÚLTIMAS VENTAS
-===================================================== */
+========================================================= */
 
 function renderizarUltimasVentas(
   lista
@@ -874,13 +943,9 @@ function renderizarUltimasVentas(
       "ultimasVentas"
     );
 
-
   if (!contenedor) {
-
     return;
-
   }
-
 
   if (
     !lista ||
@@ -910,7 +975,6 @@ function renderizarUltimasVentas(
     return;
 
   }
-
 
   contenedor.innerHTML = `
 
@@ -989,70 +1053,61 @@ function renderizarUltimasVentas(
 
 }
 
-
-/* =====================================================
-   ESTADÍSTICAS GENERALES
-===================================================== */
+/* =========================================================
+   ESTADÍSTICAS
+========================================================= */
 
 function actualizarEstadisticasGenerales() {
-
-  if (
-    dashboardData &&
-    dashboardData.ok
-  ) {
-
-    return;
-
-  }
-
 
   const statRecibos =
     document.getElementById(
       "statRecibos"
     );
 
-
   const statClientes =
     document.getElementById(
       "statClientes"
     );
-
 
   const statServicios =
     document.getElementById(
       "statServicios"
     );
 
-
   const statFacturacion =
     document.getElementById(
       "statFacturacion"
     );
 
-
-  if (statRecibos) {
+  if (
+    statRecibos &&
+    recibos.length
+  ) {
 
     statRecibos.textContent =
       recibos.length;
 
   }
 
-
-  if (statClientes) {
+  if (
+    statClientes &&
+    clientes.length
+  ) {
 
     statClientes.textContent =
       clientes.length;
 
   }
 
-
-  if (statServicios) {
+  if (
+    statServicios &&
+    servicios.length
+  ) {
 
     statServicios.textContent =
       servicios.length;
 
   }
-
 
   const total =
     ventas.reduce(
@@ -1072,8 +1127,10 @@ function actualizarEstadisticasGenerales() {
       0
     );
 
-
-  if (statFacturacion) {
+  if (
+    statFacturacion &&
+    !dashboardData.facturacion
+  ) {
 
     statFacturacion.textContent =
       formatearDinero(
@@ -1084,10 +1141,9 @@ function actualizarEstadisticasGenerales() {
 
 }
 
-
-/* =====================================================
+/* =========================================================
    SERVICIOS
-===================================================== */
+========================================================= */
 
 function cargarServicios(
   lista
@@ -1098,7 +1154,6 @@ function cargarServicios(
       "servicio"
     );
 
-
   if (
     !select ||
     !lista.length
@@ -1108,7 +1163,6 @@ function cargarServicios(
 
   }
 
-
   select.innerHTML = `
 
     <option value="">
@@ -1116,7 +1170,6 @@ function cargarServicios(
     </option>
 
   `;
-
 
   lista.forEach(
     servicio => {
@@ -1127,7 +1180,6 @@ function cargarServicios(
         servicio.descripcion ||
         "";
 
-
       const precio =
         Number(
           servicio.precio ||
@@ -1136,33 +1188,25 @@ function cargarServicios(
           0
         );
 
-
       if (!nombre) {
-
         return;
-
       }
-
 
       const option =
         document.createElement(
           "option"
         );
 
-
       option.value =
         nombre;
-
 
       option.textContent =
         `${nombre} - ${formatearDinero(
           precio
         )}`;
 
-
       option.dataset.precio =
         precio;
-
 
       select.appendChild(
         option
@@ -1173,10 +1217,9 @@ function cargarServicios(
 
 }
 
-
-/* =====================================================
+/* =========================================================
    PRECIO SERVICIO
-===================================================== */
+========================================================= */
 
 function actualizarPrecioServicio() {
 
@@ -1185,38 +1228,28 @@ function actualizarPrecioServicio() {
       "servicio"
     );
 
-
   if (!select) {
-
     return;
-
   }
-
 
   const opcion =
     select.options[
       select.selectedIndex
     ];
 
-
   if (!opcion) {
-
     return;
-
   }
-
 
   const precio =
     Number(
       opcion.dataset.precio || 0
     );
 
-
   const campoPrecio =
     document.getElementById(
       "precio"
     );
-
 
   if (campoPrecio) {
 
@@ -1225,15 +1258,13 @@ function actualizarPrecioServicio() {
 
   }
 
-
   actualizarTotal();
 
 }
 
-
-/* =====================================================
+/* =========================================================
    TOTAL
-===================================================== */
+========================================================= */
 
 function actualizarTotal() {
 
@@ -1242,31 +1273,24 @@ function actualizarTotal() {
       "precio"
     );
 
-
   const campoCantidad =
     document.getElementById(
       "cantidad"
     );
-
 
   const totalElemento =
     document.getElementById(
       "totalVenta"
     );
 
-
   if (!campoPrecio) {
-
     return;
-
   }
-
 
   const precio =
     Number(
       campoPrecio.value
     ) || 0;
-
 
   const cantidad =
     campoCantidad
@@ -1275,10 +1299,8 @@ function actualizarTotal() {
         ) || 1
       : 1;
 
-
   const total =
     precio * cantidad;
-
 
   if (totalElemento) {
 
@@ -1291,10 +1313,9 @@ function actualizarTotal() {
 
 }
 
-
-/* =====================================================
+/* =========================================================
    GENERAR VENTA
-===================================================== */
+========================================================= */
 
 async function generarVenta() {
 
@@ -1303,30 +1324,25 @@ async function generarVenta() {
       "cliente"
     );
 
-
   const telefono =
     obtenerValor(
       "telefono"
     );
-
 
   const direccion =
     obtenerValor(
       "direccion"
     );
 
-
   const email =
     obtenerValor(
       "email"
     );
 
-
   const servicio =
     obtenerValor(
       "servicio"
     );
-
 
   const precio =
     Number(
@@ -1335,7 +1351,6 @@ async function generarVenta() {
       )
     );
 
-
   const cantidad =
     Number(
       obtenerValor(
@@ -1343,18 +1358,15 @@ async function generarVenta() {
       )
     ) || 1;
 
-
   const formaPago =
     obtenerValor(
       "formaPago"
     );
 
-
   const estado =
     obtenerValor(
       "estado"
     );
-
 
   if (!cliente) {
 
@@ -1367,7 +1379,6 @@ async function generarVenta() {
 
   }
 
-
   if (!servicio) {
 
     mostrarToast(
@@ -1378,7 +1389,6 @@ async function generarVenta() {
     return;
 
   }
-
 
   if (
     !precio ||
@@ -1394,12 +1404,10 @@ async function generarVenta() {
 
   }
 
-
   const btn =
     document.getElementById(
       "btnGenerar"
     );
-
 
   if (btn) {
 
@@ -1409,7 +1417,6 @@ async function generarVenta() {
       "⏳ Generando...";
 
   }
-
 
   const datos = {
 
@@ -1431,7 +1438,6 @@ async function generarVenta() {
 
   };
 
-
   try {
 
     const respuesta =
@@ -1442,10 +1448,8 @@ async function generarVenta() {
           method: "POST",
 
           headers: {
-
             "Content-Type":
               "text/plain;charset=utf-8"
-
           },
 
           body:
@@ -1456,7 +1460,6 @@ async function generarVenta() {
         }
       );
 
-
     if (!respuesta.ok) {
 
       throw new Error(
@@ -1465,10 +1468,8 @@ async function generarVenta() {
 
     }
 
-
     const resultado =
       await respuesta.json();
-
 
     if (!resultado.ok) {
 
@@ -1478,7 +1479,6 @@ async function generarVenta() {
       );
 
     }
-
 
     ultimoRecibo = {
 
@@ -1492,23 +1492,17 @@ async function generarVenta() {
         resultado.pdfUrl,
 
       cliente,
-
       telefono,
-
       servicio,
-
       formaPago
 
     };
-
 
     mostrarResultadoRecibo(
       resultado
     );
 
-
     limpiarFormulario();
-
 
     limpiarCacheAPI();
 
@@ -1516,17 +1510,16 @@ async function generarVenta() {
       force: true
     });
 
-
     mostrarToast(
       "Venta registrada correctamente",
       "success"
     );
 
-
   } catch (error) {
 
-    console.error(error);
-
+    console.error(
+      error
+    );
 
     mostrarToast(
       "Error: " +
@@ -1549,10 +1542,9 @@ async function generarVenta() {
 
 }
 
-
-/* =====================================================
+/* =========================================================
    RESULTADO RECIBO
-===================================================== */
+========================================================= */
 
 function mostrarResultadoRecibo(
   resultado
@@ -1565,13 +1557,11 @@ function mostrarResultadoRecibo(
         : ""
     );
 
-
   const mensaje =
     crearMensajeWhatsApp(
       ultimoRecibo || {},
       resultado
     );
-
 
   const whatsappUrl =
     telefono
@@ -1584,12 +1574,10 @@ function mostrarResultadoRecibo(
           mensaje
         )}`;
 
-
   const resultadoElemento =
     document.getElementById(
       "resultadoRecibo"
     );
-
 
   if (resultadoElemento) {
 
@@ -1625,7 +1613,6 @@ function mostrarResultadoRecibo(
 
       </div>
 
-
       <div
         class="recibo-actions"
         style="
@@ -1642,24 +1629,17 @@ function mostrarResultadoRecibo(
           rel="noopener"
           class="btn btn-primary"
         >
-
           📄 Ver PDF
-
         </a>
-
 
         <a
           href="${whatsappUrl}"
           target="_blank"
           rel="noopener"
           class="btn btn-whatsapp"
-          style="
-            text-decoration:none;
-          "
+          style="text-decoration:none;"
         >
-
           💬 Enviar por WhatsApp
-
         </a>
 
       </div>
@@ -1668,12 +1648,10 @@ function mostrarResultadoRecibo(
 
   }
 
-
   const modal =
     document.getElementById(
       "modalRecibo"
     );
-
 
   if (modal) {
 
@@ -1685,10 +1663,9 @@ function mostrarResultadoRecibo(
 
 }
 
-
-/* =====================================================
-   MENSAJE WHATSAPP
-===================================================== */
+/* =========================================================
+   WHATSAPP RECIBO
+========================================================= */
 
 function crearMensajeWhatsApp(
   datos,
@@ -1700,33 +1677,27 @@ function crearMensajeWhatsApp(
     datos.numero ||
     "";
 
-
   const cliente =
     datos.cliente ||
     "cliente";
 
-
   const servicio =
     datos.servicio ||
     "";
-
 
   const total =
     resultado.total ||
     datos.total ||
     0;
 
-
   const formaPago =
     datos.formaPago ||
     "";
-
 
   const pdf =
     resultado.pdfUrl ||
     datos.pdfUrl ||
     "";
-
 
   return `Hola ${cliente} 👋
 
@@ -1749,10 +1720,9 @@ ${pdf}
 
 }
 
-
-/* =====================================================
+/* =========================================================
    NORMALIZAR WHATSAPP
-===================================================== */
+========================================================= */
 
 function normalizarWhatsApp(
   telefono
@@ -1766,34 +1736,24 @@ function normalizarWhatsApp(
       ""
     );
 
-
   if (!numero) {
-
     return "";
-
   }
 
-
-  /*
-   * Argentina:
-   * +54 9 341 ...
-   */
-
   if (
-    numero.startsWith("549")
+    numero.startsWith(
+      "549"
+    )
   ) {
 
     return numero;
 
   }
 
-
-  /*
-   * 54 + celular
-   */
-
   if (
-    numero.startsWith("54")
+    numero.startsWith(
+      "54"
+    )
   ) {
 
     return (
@@ -1803,13 +1763,10 @@ function normalizarWhatsApp(
 
   }
 
-
-  /*
-   * Eliminar 0 inicial
-   */
-
   if (
-    numero.startsWith("0")
+    numero.startsWith(
+      "0"
+    )
   ) {
 
     numero =
@@ -1817,20 +1774,16 @@ function normalizarWhatsApp(
 
   }
 
-
-  /*
-   * Eliminar 15 de celular
-   */
-
   if (
-    numero.startsWith("15")
+    numero.startsWith(
+      "15"
+    )
   ) {
 
     numero =
       numero.substring(2);
 
   }
-
 
   return (
     "549" +
@@ -1839,10 +1792,9 @@ function normalizarWhatsApp(
 
 }
 
-
-/* =====================================================
+/* =========================================================
    CERRAR MODAL
-===================================================== */
+========================================================= */
 
 function cerrarModal() {
 
@@ -1850,7 +1802,6 @@ function cerrarModal() {
     document.getElementById(
       "modalRecibo"
     );
-
 
   if (modal) {
 
@@ -1862,22 +1813,18 @@ function cerrarModal() {
 
 }
 
-
-/* =====================================================
+/* =========================================================
    LIMPIAR FORMULARIO
-===================================================== */
+========================================================= */
 
 function limpiarFormulario() {
 
   const campos = [
-
     "cliente",
     "telefono",
     "direccion",
     "email"
-
   ];
-
 
   campos.forEach(
     id => {
@@ -1886,7 +1833,6 @@ function limpiarFormulario() {
         document.getElementById(
           id
         );
-
 
       if (elemento) {
 
@@ -1898,12 +1844,10 @@ function limpiarFormulario() {
     }
   );
 
-
   const servicio =
     document.getElementById(
       "servicio"
     );
-
 
   if (servicio) {
 
@@ -1912,12 +1856,10 @@ function limpiarFormulario() {
 
   }
 
-
   const precio =
     document.getElementById(
       "precio"
     );
-
 
   if (precio) {
 
@@ -1926,12 +1868,10 @@ function limpiarFormulario() {
 
   }
 
-
   const cantidad =
     document.getElementById(
       "cantidad"
     );
-
 
   if (cantidad) {
 
@@ -1940,12 +1880,10 @@ function limpiarFormulario() {
 
   }
 
-
   const formaPago =
     document.getElementById(
       "formaPago"
     );
-
 
   if (formaPago) {
 
@@ -1954,12 +1892,10 @@ function limpiarFormulario() {
 
   }
 
-
   const estado =
     document.getElementById(
       "estado"
     );
-
 
   if (estado) {
 
@@ -1968,15 +1904,13 @@ function limpiarFormulario() {
 
   }
 
-
   actualizarTotal();
 
 }
 
-
-/* =====================================================
+/* =========================================================
    RECIBOS - FILTRO
-===================================================== */
+========================================================= */
 
 function filtrarRecibos() {
 
@@ -1985,14 +1919,12 @@ function filtrarRecibos() {
       "buscarRecibo"
     );
 
-
   const texto =
     campo
       ? campo.value
           .toLowerCase()
           .trim()
       : "";
-
 
   const filtrados =
     recibos.filter(
@@ -2026,17 +1958,15 @@ function filtrarRecibos() {
       }
     );
 
-
   renderizarRecibos(
     filtrados
   );
 
 }
 
-
-/* =====================================================
+/* =========================================================
    RECIBOS - RENDER
-===================================================== */
+========================================================= */
 
 function renderizarRecibos(
   lista
@@ -2047,13 +1977,9 @@ function renderizarRecibos(
       "listaRecibos"
     );
 
-
   if (!contenedor) {
-
     return;
-
   }
-
 
   if (!lista.length) {
 
@@ -2080,7 +2006,6 @@ function renderizarRecibos(
     return;
 
   }
-
 
   contenedor.innerHTML = `
 
@@ -2112,12 +2037,10 @@ function renderizarRecibos(
               recibo.recibo ||
               "";
 
-
             const pdf =
               recibo.pdf ||
               recibo.pdfUrl ||
               "";
-
 
             return `
 
@@ -2133,13 +2056,11 @@ function renderizarRecibos(
 
                 </td>
 
-
                 <td>
                   ${escaparHTML(
                     recibo.fecha || "-"
                   )}
                 </td>
-
 
                 <td>
                   ${escaparHTML(
@@ -2147,13 +2068,11 @@ function renderizarRecibos(
                   )}
                 </td>
 
-
                 <td>
                   ${escaparHTML(
                     recibo.servicio || "-"
                   )}
                 </td>
-
 
                 <td>
                   ${formatearDinero(
@@ -2161,13 +2080,11 @@ function renderizarRecibos(
                   )}
                 </td>
 
-
                 <td>
                   ${crearBadgeEstado(
                     recibo.estado
                   )}
                 </td>
-
 
                 <td>
 
@@ -2182,25 +2099,18 @@ function renderizarRecibos(
 
                     ${
                       pdf
-
                         ? `
-
                           <a
                             href="${pdf}"
                             target="_blank"
                             rel="noopener"
                             class="pdf-link"
                           >
-
                             📄 Ver
-
                           </a>
-
                         `
-
                         : ""
                     }
-
 
                     <button
                       type="button"
@@ -2208,13 +2118,9 @@ function renderizarRecibos(
                       onclick="eliminarRecibo('${escaparAtributo(
                         numero
                       )}')"
-                      style="
-                        cursor:pointer;
-                      "
+                      style="cursor:pointer;"
                     >
-
                       🗑️ Eliminar
-
                     </button>
 
                   </div>
@@ -2236,10 +2142,9 @@ function renderizarRecibos(
 
 }
 
-
-/* =====================================================
+/* =========================================================
    ELIMINAR RECIBO
-===================================================== */
+========================================================= */
 
 async function eliminarRecibo(
   numero
@@ -2256,20 +2161,15 @@ async function eliminarRecibo(
 
   }
 
-
   const confirmado =
     confirm(
       `¿Seguro que querés eliminar el recibo Nº ${numero}?\n\n` +
       `Se eliminará la venta del balance y el PDF asociado de Drive.`
     );
 
-
   if (!confirmado) {
-
     return;
-
   }
-
 
   try {
 
@@ -2277,7 +2177,6 @@ async function eliminarRecibo(
       "Eliminando recibo...",
       "success"
     );
-
 
     const respuesta =
       await fetch(
@@ -2287,10 +2186,8 @@ async function eliminarRecibo(
           method: "POST",
 
           headers: {
-
             "Content-Type":
               "text/plain;charset=utf-8"
-
           },
 
           body:
@@ -2307,7 +2204,6 @@ async function eliminarRecibo(
         }
       );
 
-
     if (!respuesta.ok) {
 
       throw new Error(
@@ -2316,10 +2212,8 @@ async function eliminarRecibo(
 
     }
 
-
     const resultado =
       await respuesta.json();
-
 
     if (!resultado.ok) {
 
@@ -2330,12 +2224,10 @@ async function eliminarRecibo(
 
     }
 
-
     mostrarToast(
       `Recibo Nº ${numero} eliminado correctamente`,
       "success"
     );
-
 
     limpiarCacheAPI();
 
@@ -2345,7 +2237,9 @@ async function eliminarRecibo(
 
   } catch (error) {
 
-    console.error(error);
+    console.error(
+      error
+    );
 
     mostrarToast(
       "Error al eliminar: " +
@@ -2357,10 +2251,9 @@ async function eliminarRecibo(
 
 }
 
-
-/* =====================================================
+/* =========================================================
    CLIENTES - FILTRO
-===================================================== */
+========================================================= */
 
 function filtrarClientes() {
 
@@ -2369,14 +2262,12 @@ function filtrarClientes() {
       "buscarCliente"
     );
 
-
   const texto =
     campo
       ? campo.value
           .toLowerCase()
           .trim()
       : "";
-
 
   const filtrados =
     clientes.filter(
@@ -2420,17 +2311,15 @@ function filtrarClientes() {
       }
     );
 
-
   renderizarClientes(
     filtrados
   );
 
 }
 
-
-/* =====================================================
+/* =========================================================
    CLIENTES - RENDER
-===================================================== */
+========================================================= */
 
 function renderizarClientes(
   lista
@@ -2441,13 +2330,9 @@ function renderizarClientes(
       "listaClientes"
     );
 
-
   if (!contenedor) {
-
     return;
-
   }
-
 
   if (!lista.length) {
 
@@ -2475,7 +2360,6 @@ function renderizarClientes(
 
   }
 
-
   contenedor.innerHTML = `
 
     <table class="data-table">
@@ -2502,11 +2386,13 @@ function renderizarClientes(
           <tr>
 
             <td>
+
               <strong>
                 ${escaparHTML(
                   cliente.nombre || "-"
                 )}
               </strong>
+
             </td>
 
             <td>
@@ -2546,10 +2432,9 @@ function renderizarClientes(
 
 }
 
-
-/* =====================================================
+/* =========================================================
    VENTAS - FILTRO
-===================================================== */
+========================================================= */
 
 function filtrarVentas() {
 
@@ -2558,12 +2443,10 @@ function filtrarVentas() {
       "buscarVenta"
     );
 
-
   const filtroPago =
     document.getElementById(
       "filtroPago"
     );
-
 
   const texto =
     campo
@@ -2572,12 +2455,10 @@ function filtrarVentas() {
           .trim()
       : "";
 
-
   const pago =
     filtroPago
       ? filtroPago.value
       : "";
-
 
   const filtradas =
     ventas.filter(
@@ -2616,11 +2497,13 @@ function filtrarVentas() {
               texto
             );
 
-
         const coincidePago =
           !pago ||
-          venta.pago === pago;
-
+          (
+            venta.pago ||
+            venta.formaPago ||
+            ""
+          ) === pago;
 
         return (
           coincideTexto &&
@@ -2630,17 +2513,15 @@ function filtrarVentas() {
       }
     );
 
-
   renderizarVentas(
     filtradas
   );
 
 }
 
-
-/* =====================================================
+/* =========================================================
    VENTAS - RENDER
-===================================================== */
+========================================================= */
 
 function renderizarVentas(
   lista
@@ -2651,13 +2532,9 @@ function renderizarVentas(
       "tablaVentas"
     );
 
-
   if (!contenedor) {
-
     return;
-
   }
-
 
   if (!lista.length) {
 
@@ -2684,7 +2561,6 @@ function renderizarVentas(
     return;
 
   }
-
 
   contenedor.innerHTML = `
 
@@ -2714,6 +2590,7 @@ function renderizarVentas(
           <tr>
 
             <td>
+
               <strong>
                 ${escaparHTML(
                   venta.recibo ||
@@ -2721,6 +2598,7 @@ function renderizarVentas(
                   "-"
                 )}
               </strong>
+
             </td>
 
             <td>
@@ -2749,7 +2627,9 @@ function renderizarVentas(
 
             <td>
               ${escaparHTML(
-                venta.pago || "-"
+                venta.pago ||
+                venta.formaPago ||
+                "-"
               )}
             </td>
 
@@ -2772,10 +2652,1970 @@ function renderizarVentas(
 
 }
 
+/* =========================================================
+   GASTOS
+========================================================= */
 
-/* =====================================================
+function inicializarGastos() {
+
+  const formulario =
+    document.getElementById(
+      "formGasto"
+    );
+
+  if (!formulario) {
+    return;
+  }
+
+  formulario.addEventListener(
+    "submit",
+    async event => {
+
+      event.preventDefault();
+
+      await registrarGasto();
+
+    }
+  );
+
+}
+
+async function registrarGasto() {
+
+  const descripcion =
+    obtenerValor(
+      "descripcionGasto"
+    );
+
+  const monto =
+    Number(
+      obtenerValor(
+        "montoGasto"
+      )
+    );
+
+  const categoria =
+    obtenerValor(
+      "categoriaGasto"
+    );
+
+  const fecha =
+    obtenerValor(
+      "fechaGasto"
+    ) ||
+    new Date().toISOString();
+
+  if (!descripcion) {
+
+    mostrarToast(
+      "Ingresá una descripción para el gasto.",
+      "error"
+    );
+
+    return;
+
+  }
+
+  if (
+    !monto ||
+    monto <= 0
+  ) {
+
+    mostrarToast(
+      "Ingresá un monto válido.",
+      "error"
+    );
+
+    return;
+
+  }
+
+  try {
+
+    const respuesta =
+      await fetch(
+        API_URL,
+        {
+
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "text/plain;charset=utf-8"
+          },
+
+          body:
+            JSON.stringify({
+
+              action:
+                "registrarGasto",
+
+              descripcion,
+              monto,
+              categoria,
+              fecha
+
+            })
+
+        }
+      );
+
+    if (!respuesta.ok) {
+
+      throw new Error(
+        `Error HTTP ${respuesta.status}`
+      );
+
+    }
+
+    const resultado =
+      await respuesta.json();
+
+    if (!resultado.ok) {
+
+      throw new Error(
+        resultado.error ||
+        "No se pudo registrar el gasto."
+      );
+
+    }
+
+    mostrarToast(
+      "Gasto registrado correctamente.",
+      "success"
+    );
+
+    limpiarCacheAPI();
+
+    const formulario =
+      document.getElementById(
+        "formGasto"
+      );
+
+    if (formulario) {
+
+      formulario.reset();
+
+    }
+
+    await cargarDatos({
+      force: true
+    });
+
+  } catch (error) {
+
+    console.error(
+      error
+    );
+
+    mostrarToast(
+      "Error al registrar gasto: " +
+      error.message,
+      "error"
+    );
+
+  }
+
+}
+
+function renderizarGastos(
+  lista
+) {
+
+  const contenedor =
+    document.getElementById(
+      "listaGastos"
+    );
+
+  if (!contenedor) {
+    return;
+  }
+
+  if (!lista.length) {
+
+    contenedor.innerHTML = `
+
+      <div class="empty-state">
+
+        <div class="empty-icon">
+          💸
+        </div>
+
+        <h3>
+          No hay gastos registrados
+        </h3>
+
+        <p>
+          Los gastos que cargues aparecerán acá.
+        </p>
+
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+  const ordenados =
+    [...lista].sort(
+      (a, b) =>
+        obtenerFechaObjeto(
+          b.fecha
+        ) -
+        obtenerFechaObjeto(
+          a.fecha
+        )
+    );
+
+  contenedor.innerHTML = `
+
+    <table class="data-table">
+
+      <thead>
+
+        <tr>
+
+          <th>FECHA</th>
+          <th>DESCRIPCIÓN</th>
+          <th>CATEGORÍA</th>
+          <th>MONTO</th>
+
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        ${ordenados.map(
+          gasto => `
+
+          <tr>
+
+            <td>
+              ${escaparHTML(
+                formatearFecha(
+                  gasto.fecha
+                )
+              )}
+            </td>
+
+            <td>
+
+              <strong>
+                ${escaparHTML(
+                  gasto.descripcion ||
+                  gasto.detalle ||
+                  gasto.concepto ||
+                  "-"
+                )}
+              </strong>
+
+            </td>
+
+            <td>
+              ${escaparHTML(
+                gasto.categoria ||
+                "-"
+              )}
+            </td>
+
+            <td>
+
+              <strong>
+                ${formatearDinero(
+                  obtenerMontoGasto(
+                    gasto
+                  )
+                )}
+              </strong>
+
+            </td>
+
+          </tr>
+
+        `
+        ).join("")}
+
+      </tbody>
+
+    </table>
+
+  `;
+
+}
+
+/* =========================================================
+   BALANCE
+========================================================= */
+
+function inicializarBalance() {
+
+  const desde =
+    document.getElementById(
+      "balanceDesde"
+    );
+
+  const hasta =
+    document.getElementById(
+      "balanceHasta"
+    );
+
+  const fechaAnterior =
+    document.getElementById(
+      "fechaBalance"
+    );
+
+  const hoy =
+    new Date();
+
+  if (
+    desde &&
+    !desde.value
+  ) {
+
+    desde.value =
+      convertirFechaInput(
+        obtenerInicioSemana(
+          hoy
+        )
+      );
+
+  }
+
+  if (
+    hasta &&
+    !hasta.value
+  ) {
+
+    hasta.value =
+      convertirFechaInput(
+        obtenerFinSemana(
+          hoy
+        )
+      );
+
+  }
+
+  if (
+    fechaAnterior &&
+    !fechaAnterior.value
+  ) {
+
+    fechaAnterior.value =
+      convertirFechaInput(
+        hoy
+      );
+
+  }
+
+  if (balanceInicializado) {
+    return;
+  }
+
+  balanceInicializado = true;
+
+  const boton =
+    document.getElementById(
+      "btnCalcularBalance"
+    ) ||
+    document.getElementById(
+      "btnActualizarBalance"
+    );
+
+  if (boton) {
+
+    boton.addEventListener(
+      "click",
+      calcularBalance
+    );
+
+  }
+
+  if (desde) {
+
+    desde.addEventListener(
+      "change",
+      () => {
+
+        ultimoBalance =
+          null;
+
+      }
+    );
+
+  }
+
+  if (hasta) {
+
+    hasta.addEventListener(
+      "change",
+      () => {
+
+        ultimoBalance =
+          null;
+
+      }
+    );
+
+  }
+
+}
+
+/* =========================================================
+   CALCULAR BALANCE
+   CONSULTA DIRECTAMENTE EL ENDPOINT balance DE APPS SCRIPT
+========================================================= */
+
+async function calcularBalance() {
+
+  const desdeElemento =
+    document.getElementById(
+      "balanceDesde"
+    );
+
+  const hastaElemento =
+    document.getElementById(
+      "balanceHasta"
+    );
+
+  let desde =
+    desdeElemento
+      ? desdeElemento.value
+      : "";
+
+  let hasta =
+    hastaElemento
+      ? hastaElemento.value
+      : "";
+
+  /* Compatibilidad con el sistema anterior */
+
+  if (
+    !desde &&
+    !hasta
+  ) {
+
+    const fechaAnterior =
+      document.getElementById(
+        "fechaBalance"
+      );
+
+    if (
+      fechaAnterior &&
+      fechaAnterior.value
+    ) {
+
+      const rango =
+        obtenerRangoSemana(
+          fechaAnterior.value
+        );
+
+      desde =
+        convertirFechaInput(
+          rango.inicio
+        );
+
+      hasta =
+        convertirFechaInput(
+          rango.fin
+        );
+
+    }
+
+  }
+
+  if (
+    !desde ||
+    !hasta
+  ) {
+
+    mostrarToast(
+      "Seleccioná la fecha desde y hasta.",
+      "error"
+    );
+
+    return null;
+
+  }
+
+  const fechaDesde =
+    obtenerFechaObjeto(
+      desde
+    );
+
+  const fechaHasta =
+    obtenerFechaObjeto(
+      hasta
+    );
+
+  if (
+    isNaN(
+      fechaDesde.getTime()
+    ) ||
+    isNaN(
+      fechaHasta.getTime()
+    )
+  ) {
+
+    mostrarToast(
+      "Las fechas seleccionadas no son válidas.",
+      "error"
+    );
+
+    return null;
+
+  }
+
+  if (
+    fechaDesde >
+    fechaHasta
+  ) {
+
+    mostrarToast(
+      "La fecha Desde no puede ser posterior a Hasta.",
+      "error"
+    );
+
+    return null;
+
+  }
+
+  const boton =
+    document.getElementById(
+      "btnCalcularBalance"
+    ) ||
+    document.getElementById(
+      "btnActualizarBalance"
+    );
+
+  const textoOriginal =
+    boton
+      ? boton.innerHTML
+      : "";
+
+  if (boton) {
+
+    boton.disabled =
+      true;
+
+    boton.innerHTML =
+      "⏳ Calculando...";
+
+  }
+
+  try {
+
+    const url =
+      `${API_URL}?action=balance&desde=${encodeURIComponent(
+        desde
+      )}&hasta=${encodeURIComponent(
+        hasta
+      )}`;
+
+    const respuesta =
+      await fetch(
+        url,
+        {
+          method: "GET",
+          cache: "no-store"
+        }
+      );
+
+    if (!respuesta.ok) {
+
+      throw new Error(
+        `Error HTTP ${respuesta.status}`
+      );
+
+    }
+
+    const resultado =
+      await respuesta.json();
+
+    if (
+      resultado.ok === false
+    ) {
+
+      throw new Error(
+        resultado.error ||
+        "No se pudo calcular el balance."
+      );
+
+    }
+
+    const distribucion =
+      resultado.distribucion ||
+      {};
+
+    const porcentajes =
+      resultado.porcentajes ||
+      PORCENTAJES;
+
+    const balance = {
+
+      inicio:
+        obtenerFechaObjeto(
+          resultado.desde ||
+          desde
+        ),
+
+      fin:
+        obtenerFechaObjeto(
+          resultado.hasta ||
+          hasta
+        ),
+
+      ingresos:
+        Number(
+          resultado.ingresos ||
+          0
+        ),
+
+      gastos:
+        Number(
+          resultado.gastos ||
+          0
+        ),
+
+      disponible:
+        Number(
+          resultado.neto ??
+          resultado.disponible ??
+          0
+        ),
+
+      Erika:
+        Number(
+          distribucion.erika ||
+          0
+        ),
+
+      Bruno:
+        Number(
+          distribucion.bruno ||
+          0
+        ),
+
+      Hector:
+        Number(
+          distribucion.hector ||
+          0
+        ),
+
+      porcentajes: {
+
+        Erika:
+          Number(
+            porcentajes.erika ??
+            PORCENTAJES.Erika
+          ),
+
+        Bruno:
+          Number(
+            porcentajes.bruno ??
+            PORCENTAJES.Bruno
+          ),
+
+        Hector:
+          Number(
+            porcentajes.hector ??
+            PORCENTAJES.Hector
+          )
+
+      },
+
+      ventas:
+        Array.isArray(
+          resultado.ventas
+        )
+          ? resultado.ventas
+          : [],
+
+      gastosLista:
+        Array.isArray(
+          resultado.gastosDetalle
+        )
+          ? resultado.gastosDetalle
+          : []
+
+    };
+
+    ultimoBalance =
+      balance;
+
+    renderizarBalance(
+      balance
+    );
+
+    mostrarToast(
+      `Balance calculado: ${balance.ventas.length} ventas y ${balance.gastosLista.length} gastos.`,
+      "success"
+    );
+
+    return balance;
+
+  } catch (error) {
+
+    console.error(
+      "Error calculando balance:",
+      error
+    );
+
+    mostrarToast(
+      "No se pudo calcular el balance: " +
+      error.message,
+      "error"
+    );
+
+    return null;
+
+  } finally {
+
+    if (boton) {
+
+      boton.disabled =
+        false;
+
+      boton.innerHTML =
+        textoOriginal ||
+        "📊 Calcular balance";
+
+    }
+
+  }
+
+}
+
+/* =========================================================
+   COMPATIBILIDAD
+========================================================= */
+
+async function actualizarBalance() {
+
+  return calcularBalance();
+
+}
+
+/* =========================================================
+   RANGO SEMANAL
+========================================================= */
+
+function obtenerInicioSemana(
+  fechaBase
+) {
+
+  const fecha =
+    new Date(
+      fechaBase
+    );
+
+  fecha.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  const dia =
+    fecha.getDay();
+
+  const diferencia =
+    dia === 0
+      ? 6
+      : dia - 1;
+
+  fecha.setDate(
+    fecha.getDate() -
+    diferencia
+  );
+
+  return fecha;
+
+}
+
+function obtenerFinSemana(
+  fechaBase
+) {
+
+  const inicio =
+    obtenerInicioSemana(
+      fechaBase
+    );
+
+  const fin =
+    new Date(
+      inicio
+    );
+
+  fin.setDate(
+    fin.getDate() +
+    6
+  );
+
+  fin.setHours(
+    23,
+    59,
+    59,
+    999
+  );
+
+  return fin;
+
+}
+
+function obtenerRangoSemana(
+  fechaBase
+) {
+
+  return {
+
+    inicio:
+      obtenerInicioSemana(
+        fechaBase
+      ),
+
+    fin:
+      obtenerFinSemana(
+        fechaBase
+      )
+
+  };
+
+}
+
+/* =========================================================
+   FILTRAR FECHAS
+========================================================= */
+
+function filtrarPorRangoFecha(
+  lista,
+  inicio,
+  fin
+) {
+
+  if (!Array.isArray(lista)) {
+    return [];
+  }
+
+  return lista.filter(
+    elemento => {
+
+      const fecha =
+        obtenerFechaObjeto(
+          elemento.fecha
+        );
+
+      if (
+        !fecha ||
+        isNaN(
+          fecha.getTime()
+        )
+      ) {
+
+        return false;
+
+      }
+
+      return (
+        fecha >= inicio &&
+        fecha <= fin
+      );
+
+    }
+  );
+
+}
+
+/* =========================================================
+   OBTENER FECHA
+========================================================= */
+
+function obtenerFechaObjeto(
+  valor
+) {
+
+  if (!valor) {
+
+    return new Date(0);
+
+  }
+
+  if (
+    valor instanceof Date
+  ) {
+
+    return new Date(
+      valor
+    );
+
+  }
+
+  const texto =
+    String(
+      valor
+    ).trim();
+
+  if (
+    /^\d{4}-\d{2}-\d{2}$/.test(
+      texto
+    )
+  ) {
+
+    const partes =
+      texto.split("-");
+
+    return new Date(
+      Number(partes[0]),
+      Number(partes[1]) - 1,
+      Number(partes[2])
+    );
+
+  }
+
+  if (
+    /^\d{2}\/\d{2}\/\d{4}$/.test(
+      texto
+    )
+  ) {
+
+    const partes =
+      texto.split("/");
+
+    return new Date(
+      Number(partes[2]),
+      Number(partes[1]) - 1,
+      Number(partes[0])
+    );
+
+  }
+
+  return new Date(
+    texto
+  );
+
+}
+
+/* =========================================================
+   MONTOS
+========================================================= */
+
+function obtenerMontoVenta(
+  venta
+) {
+
+  return Number(
+    venta.total ||
+    venta.importe ||
+    venta.monto ||
+    venta.precio ||
+    0
+  );
+
+}
+
+function obtenerMontoGasto(
+  gasto
+) {
+
+  return Number(
+    gasto.monto ||
+    gasto.total ||
+    gasto.importe ||
+    gasto.valor ||
+    0
+  );
+
+}
+
+/* =========================================================
+   RENDER BALANCE
+========================================================= */
+
+function renderizarBalance(
+  balance
+) {
+
+  if (!balance) {
+    return;
+  }
+
+  const inicio =
+    formatearFecha(
+      balance.inicio
+    );
+
+  const fin =
+    formatearFecha(
+      balance.fin
+    );
+
+  const elementoRango =
+    document.getElementById(
+      "rangoBalance"
+    );
+
+  if (elementoRango) {
+
+    elementoRango.textContent =
+      `${inicio} al ${fin}`;
+
+  }
+
+  /* INGRESOS */
+
+  colocarTexto(
+    [
+      "balanceIngresos",
+      "totalIngresos",
+      "statIngresosBalance"
+    ],
+    formatearDinero(
+      balance.ingresos
+    )
+  );
+
+  /* GASTOS */
+
+  colocarTexto(
+    [
+      "balanceGastos",
+      "totalGastos",
+      "statGastosBalance"
+    ],
+    formatearDinero(
+      balance.gastos
+    )
+  );
+
+  /* NETO */
+
+  colocarTexto(
+    [
+      "balanceDisponible",
+      "totalDisponible",
+      "balanceNeto",
+      "statDisponibleBalance"
+    ],
+    formatearDinero(
+      balance.disponible
+    )
+  );
+
+  /* ERIKA */
+
+  colocarTexto(
+    [
+      "balanceErika",
+      "totalErika",
+      "montoErika"
+    ],
+    formatearDinero(
+      balance.Erika
+    )
+  );
+
+  /* BRUNO */
+
+  colocarTexto(
+    [
+      "balanceBruno",
+      "totalBruno",
+      "montoBruno"
+    ],
+    formatearDinero(
+      balance.Bruno
+    )
+  );
+
+  /* HECTOR */
+
+  colocarTexto(
+    [
+      "balanceHector",
+      "totalHector",
+      "montoHector"
+    ],
+    formatearDinero(
+      balance.Hector
+    )
+  );
+
+  /* PORCENTAJES */
+
+  colocarTexto(
+    [
+      "porcentajeErika"
+    ],
+    `${balance.porcentajes?.Erika ??
+      PORCENTAJES.Erika}%`
+  );
+
+  colocarTexto(
+    [
+      "porcentajeBruno"
+    ],
+    `${balance.porcentajes?.Bruno ??
+      PORCENTAJES.Bruno}%`
+  );
+
+  colocarTexto(
+    [
+      "porcentajeHector"
+    ],
+    `${balance.porcentajes?.Hector ??
+      PORCENTAJES.Hector}%`
+  );
+
+  renderizarVentasBalance(
+    balance.ventas || []
+  );
+
+  renderizarGastosBalance(
+    balance.gastosLista || []
+  );
+
+  configurarWhatsAppBalance(
+    balance
+  );
+
+}
+
+/* =========================================================
+   COLOCAR TEXTO
+========================================================= */
+
+function colocarTexto(
+  ids,
+  valor
+) {
+
+  ids.forEach(
+    id => {
+
+      const elemento =
+        document.getElementById(
+          id
+        );
+
+      if (elemento) {
+
+        elemento.textContent =
+          valor;
+
+      }
+
+    }
+  );
+
+}
+
+/* =========================================================
+   TABLA VENTAS BALANCE
+========================================================= */
+
+function renderizarVentasBalance(
+  lista
+) {
+
+  const contenedor =
+    document.getElementById(
+      "ventasBalance"
+    );
+
+  if (!contenedor) {
+    return;
+  }
+
+  if (!lista.length) {
+
+    contenedor.innerHTML = `
+
+      <div class="empty-state">
+
+        <div class="empty-icon">
+          📈
+        </div>
+
+        <h3>
+          No hubo ventas en este período
+        </h3>
+
+        <p>
+          Probá seleccionando otro rango de fechas.
+        </p>
+
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+  contenedor.innerHTML = `
+
+    <table class="data-table">
+
+      <thead>
+
+        <tr>
+
+          <th>FECHA</th>
+          <th>CLIENTE</th>
+          <th>SERVICIO</th>
+          <th>TOTAL</th>
+
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        ${lista.map(
+          venta => `
+
+          <tr>
+
+            <td>
+              ${escaparHTML(
+                formatearFecha(
+                  venta.fecha
+                )
+              )}
+            </td>
+
+            <td>
+              ${escaparHTML(
+                venta.cliente ||
+                "-"
+              )}
+            </td>
+
+            <td>
+              ${escaparHTML(
+                venta.servicio ||
+                "-"
+              )}
+            </td>
+
+            <td>
+
+              <strong>
+                ${formatearDinero(
+                  obtenerMontoVenta(
+                    venta
+                  )
+                )}
+              </strong>
+
+            </td>
+
+          </tr>
+
+        `
+        ).join("")}
+
+      </tbody>
+
+    </table>
+
+  `;
+
+}
+
+/* =========================================================
+   TABLA GASTOS BALANCE
+========================================================= */
+
+function renderizarGastosBalance(
+  lista
+) {
+
+  const contenedor =
+    document.getElementById(
+      "gastosBalance"
+    );
+
+  if (!contenedor) {
+    return;
+  }
+
+  if (!lista.length) {
+
+    contenedor.innerHTML = `
+
+      <div class="empty-state">
+
+        <div class="empty-icon">
+          💸
+        </div>
+
+        <h3>
+          No hubo gastos en este período
+        </h3>
+
+        <p>
+          Probá seleccionando otro rango de fechas.
+        </p>
+
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+  contenedor.innerHTML = `
+
+    <table class="data-table">
+
+      <thead>
+
+        <tr>
+
+          <th>FECHA</th>
+          <th>DESCRIPCIÓN</th>
+          <th>CATEGORÍA</th>
+          <th>MONTO</th>
+
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        ${lista.map(
+          gasto => `
+
+          <tr>
+
+            <td>
+              ${escaparHTML(
+                formatearFecha(
+                  gasto.fecha
+                )
+              )}
+            </td>
+
+            <td>
+
+              <strong>
+                ${escaparHTML(
+                  gasto.descripcion ||
+                  gasto.detalle ||
+                  gasto.concepto ||
+                  "-"
+                )}
+              </strong>
+
+            </td>
+
+            <td>
+              ${escaparHTML(
+                gasto.categoria ||
+                "-"
+              )}
+            </td>
+
+            <td>
+
+              <strong>
+                ${formatearDinero(
+                  obtenerMontoGasto(
+                    gasto
+                  )
+                )}
+              </strong>
+
+            </td>
+
+          </tr>
+
+        `
+        ).join("")}
+
+      </tbody>
+
+    </table>
+
+  `;
+
+}
+
+/* =========================================================
+   WHATSAPP BALANCE
+========================================================= */
+
+function configurarWhatsAppBalance(
+  balance
+) {
+
+  const socios = [
+
+    {
+      nombre: "Erika",
+      monto: balance.Erika,
+      porcentaje:
+        balance.porcentajes?.Erika ??
+        PORCENTAJES.Erika
+    },
+
+    {
+      nombre: "Bruno",
+      monto: balance.Bruno,
+      porcentaje:
+        balance.porcentajes?.Bruno ??
+        PORCENTAJES.Bruno
+    },
+
+    {
+      nombre: "Hector",
+      monto: balance.Hector,
+      porcentaje:
+        balance.porcentajes?.Hector ??
+        PORCENTAJES.Hector
+    }
+
+  ];
+
+  socios.forEach(
+    socio => {
+
+      const numero =
+        obtenerNumeroSocio(
+          socio.nombre
+        );
+
+      const mensaje =
+        crearMensajeBalanceWhatsApp(
+          socio,
+          balance
+        );
+
+      const url =
+        numero
+
+          ? `https://wa.me/${numero}?text=${encodeURIComponent(
+              mensaje
+            )}`
+
+          : `https://wa.me/?text=${encodeURIComponent(
+              mensaje
+            )}`;
+
+      const ids = {
+
+        Erika: [
+          "whatsappErika",
+          "btnWhatsAppErika"
+        ],
+
+        Bruno: [
+          "whatsappBruno",
+          "btnWhatsAppBruno"
+        ],
+
+        Hector: [
+          "whatsappHector",
+          "btnWhatsAppHector"
+        ]
+
+      };
+
+      (
+        ids[socio.nombre] ||
+        []
+      ).forEach(
+        id => {
+
+          const elemento =
+            document.getElementById(
+              id
+            );
+
+          if (!elemento) {
+            return;
+          }
+
+          elemento.href =
+            url;
+
+          elemento.target =
+            "_blank";
+
+          elemento.rel =
+            "noopener";
+
+        }
+      );
+
+    }
+  );
+
+  const botonGeneral =
+    document.getElementById(
+      "whatsappBalanceGeneral"
+    );
+
+  if (botonGeneral) {
+
+    const mensaje =
+      crearMensajeBalanceGeneral(
+        balance
+      );
+
+    botonGeneral.href =
+      `https://wa.me/?text=${encodeURIComponent(
+        mensaje
+      )}`;
+
+    botonGeneral.target =
+      "_blank";
+
+  }
+
+}
+
+/* =========================================================
+   OBTENER NÚMERO SOCIO
+========================================================= */
+
+function obtenerNumeroSocio(
+  nombre
+) {
+
+  let numero =
+    SOCIOS[nombre] ||
+    "";
+
+  const ids = {
+
+    Erika: [
+      "whatsappErika",
+      "btnWhatsAppErika"
+    ],
+
+    Bruno: [
+      "whatsappBruno",
+      "btnWhatsAppBruno"
+    ],
+
+    Hector: [
+      "whatsappHector",
+      "btnWhatsAppHector"
+    ]
+
+  };
+
+  if (!numero) {
+
+    for (
+      const id of (
+        ids[nombre] ||
+        []
+      )
+    ) {
+
+      const elemento =
+        document.getElementById(
+          id
+        );
+
+      if (!elemento) {
+        continue;
+      }
+
+      const dataNumero =
+        elemento.dataset
+          ? elemento.dataset.whatsapp
+          : "";
+
+      if (dataNumero) {
+
+        numero =
+          dataNumero;
+
+        break;
+
+      }
+
+    }
+
+  }
+
+  return normalizarWhatsApp(
+    numero
+  );
+
+}
+
+/* =========================================================
+   MENSAJE BALANCE INDIVIDUAL
+========================================================= */
+
+function crearMensajeBalanceWhatsApp(
+  socio,
+  balance
+) {
+
+  return `Hola ${socio.nombre} 👋
+
+Te paso el balance semanal de RosDrive 🚗
+
+📅 Semana:
+${formatearFecha(
+    balance.inicio
+  )} al ${formatearFecha(
+    balance.fin
+  )}
+
+💰 Ingresos:
+${formatearDinero(
+    balance.ingresos
+  )}
+
+💸 Gastos:
+${formatearDinero(
+    balance.gastos
+  )}
+
+💵 Neto a repartir:
+${formatearDinero(
+    balance.disponible
+  )}
+
+📊 Tu porcentaje:
+${socio.porcentaje}%
+
+💰 Tu parte:
+${formatearDinero(
+    socio.monto
+  )}
+
+RosDrive 🚗`;
+
+}
+
+/* =========================================================
+   MENSAJE GENERAL
+========================================================= */
+
+function crearMensajeBalanceGeneral(
+  balance
+) {
+
+  return `📊 BALANCE SEMANAL ROSDRIVE 🚗
+
+📅 ${formatearFecha(
+    balance.inicio
+  )} al ${formatearFecha(
+    balance.fin
+  )}
+
+💰 INGRESOS
+${formatearDinero(
+    balance.ingresos
+  )}
+
+💸 GASTOS
+${formatearDinero(
+    balance.gastos
+  )}
+
+💵 NETO
+${formatearDinero(
+    balance.disponible
+  )}
+
+👩 ERIKA - ${
+    balance.porcentajes?.Erika ??
+    PORCENTAJES.Erika
+  }%
+${formatearDinero(
+    balance.Erika
+  )}
+
+👨 BRUNO - ${
+    balance.porcentajes?.Bruno ??
+    PORCENTAJES.Bruno
+  }%
+${formatearDinero(
+    balance.Bruno
+  )}
+
+👨 HÉCTOR - ${
+    balance.porcentajes?.Hector ??
+    PORCENTAJES.Hector
+  }%
+${formatearDinero(
+    balance.Hector
+  )}
+
+RosDrive 🚗`;
+
+}
+
+/* =========================================================
+   CERRAR BALANCE
+========================================================= */
+
+async function cerrarBalance() {
+
+  if (!ultimoBalance) {
+
+    const calculado =
+      await calcularBalance();
+
+    if (!calculado) {
+      return;
+    }
+
+  }
+
+  if (!ultimoBalance) {
+
+    mostrarToast(
+      "No hay un balance para cerrar.",
+      "error"
+    );
+
+    return;
+
+  }
+
+  const balance =
+    ultimoBalance;
+
+  const porcentajeErika =
+    balance.porcentajes?.Erika ??
+    PORCENTAJES.Erika;
+
+  const porcentajeBruno =
+    balance.porcentajes?.Bruno ??
+    PORCENTAJES.Bruno;
+
+  const porcentajeHector =
+    balance.porcentajes?.Hector ??
+    PORCENTAJES.Hector;
+
+  const confirmado =
+    confirm(
+      `¿Cerrar el balance semanal?\n\n` +
+
+      `Ingresos: ${formatearDinero(
+        balance.ingresos
+      )}\n` +
+
+      `Gastos: ${formatearDinero(
+        balance.gastos
+      )}\n` +
+
+      `Neto: ${formatearDinero(
+        balance.disponible
+      )}\n\n` +
+
+      `Erika ${porcentajeErika}%: ${formatearDinero(
+        balance.Erika
+      )}\n` +
+
+      `Bruno ${porcentajeBruno}%: ${formatearDinero(
+        balance.Bruno
+      )}\n` +
+
+      `Héctor ${porcentajeHector}%: ${formatearDinero(
+        balance.Hector
+      )}`
+    );
+
+  if (!confirmado) {
+    return;
+  }
+
+  try {
+
+    const respuesta =
+      await fetch(
+        API_URL,
+        {
+
+          method: "POST",
+
+          headers: {
+
+            "Content-Type":
+              "text/plain;charset=utf-8"
+
+          },
+
+          body:
+            JSON.stringify({
+
+              action:
+                "cerrarBalance",
+
+              desde:
+                convertirFechaInput(
+                  balance.inicio
+                ),
+
+              hasta:
+                convertirFechaInput(
+                  balance.fin
+                ),
+
+              ingresos:
+                balance.ingresos,
+
+              gastos:
+                balance.gastos,
+
+              neto:
+                balance.disponible,
+
+              Erika:
+                balance.Erika,
+
+              Bruno:
+                balance.Bruno,
+
+              Hector:
+                balance.Hector
+
+            })
+
+        }
+      );
+
+    if (!respuesta.ok) {
+
+      throw new Error(
+        `Error HTTP ${respuesta.status}`
+      );
+
+    }
+
+    const resultado =
+      await respuesta.json();
+
+    if (!resultado.ok) {
+
+      throw new Error(
+        resultado.error ||
+        "No se pudo cerrar el balance."
+      );
+
+    }
+
+    mostrarToast(
+      "Balance cerrado correctamente.",
+      "success"
+    );
+
+    limpiarCacheAPI();
+
+    await cargarDatos({
+      force: true
+    });
+
+  } catch (error) {
+
+    console.error(
+      error
+    );
+
+    mostrarToast(
+      "El balance fue calculado, pero no pudo guardarse: " +
+      error.message,
+      "error"
+    );
+
+  }
+
+}
+
+/* =========================================================
+   FORMATEAR FECHA
+========================================================= */
+
+function formatearFecha(
+  valor
+) {
+
+  const fecha =
+    obtenerFechaObjeto(
+      valor
+    );
+
+  if (
+    !fecha ||
+    isNaN(
+      fecha.getTime()
+    )
+  ) {
+
+    return "-";
+
+  }
+
+  return fecha.toLocaleDateString(
+    "es-AR",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric"
+    }
+  );
+
+}
+
+function convertirFechaInput(
+  fecha
+) {
+
+  const d =
+    new Date(
+      fecha
+    );
+
+  if (
+    !d ||
+    isNaN(
+      d.getTime()
+    )
+  ) {
+
+    return "";
+
+  }
+
+  const año =
+    d.getFullYear();
+
+  const mes =
+    String(
+      d.getMonth() + 1
+    ).padStart(
+      2,
+      "0"
+    );
+
+  const dia =
+    String(
+      d.getDate()
+    ).padStart(
+      2,
+      "0"
+    );
+
+  return `${año}-${mes}-${dia}`;
+
+}
+
+/* =========================================================
    BADGE ESTADO
-===================================================== */
+========================================================= */
 
 function crearBadgeEstado(
   estado
@@ -2788,7 +4628,6 @@ function crearBadgeEstado(
     )
       .toUpperCase();
 
-
   if (
     valor === "PENDIENTE"
   ) {
@@ -2796,15 +4635,12 @@ function crearBadgeEstado(
     return `
 
       <span class="badge badge-pending">
-
         PENDIENTE
-
       </span>
 
     `;
 
   }
-
 
   return `
 
@@ -2820,10 +4656,9 @@ function crearBadgeEstado(
 
 }
 
-
-/* =====================================================
+/* =========================================================
    FORMATO DINERO
-===================================================== */
+========================================================= */
 
 function formatearDinero(
   valor
@@ -2849,10 +4684,9 @@ function formatearDinero(
 
 }
 
-
-/* =====================================================
+/* =========================================================
    OBTENER VALOR
-===================================================== */
+========================================================= */
 
 function obtenerValor(
   id
@@ -2863,13 +4697,9 @@ function obtenerValor(
       id
     );
 
-
   if (!elemento) {
-
     return "";
-
   }
-
 
   return String(
     elemento.value || ""
@@ -2877,10 +4707,9 @@ function obtenerValor(
 
 }
 
-
-/* =====================================================
+/* =========================================================
    ESCAPAR HTML
-===================================================== */
+========================================================= */
 
 function escaparHTML(
   valor
@@ -2912,10 +4741,9 @@ function escaparHTML(
 
 }
 
-
-/* =====================================================
-   ESCAPAR ATRIBUTOS
-===================================================== */
+/* =========================================================
+   ESCAPAR ATRIBUTO
+========================================================= */
 
 function escaparAtributo(
   valor
@@ -2931,10 +4759,9 @@ function escaparAtributo(
 
 }
 
-
-/* =====================================================
+/* =========================================================
    TOAST
-===================================================== */
+========================================================= */
 
 function mostrarToast(
   mensaje,
@@ -2946,32 +4773,25 @@ function mostrarToast(
       "toast"
     );
 
-
   if (!toast) {
 
-    /*
-     * Fallback si todavía no existe
-     * el componente visual del toast.
-     */
-
-    alert(mensaje);
+    alert(
+      mensaje
+    );
 
     return;
 
   }
-
 
   const icon =
     document.getElementById(
       "toastIcon"
     );
 
-
   const text =
     document.getElementById(
       "toastMessage"
     );
-
 
   if (icon) {
 
@@ -2982,7 +4802,6 @@ function mostrarToast(
 
   }
 
-
   if (text) {
 
     text.textContent =
@@ -2990,11 +4809,9 @@ function mostrarToast(
 
   }
 
-
   toast.classList.add(
     "show"
   );
-
 
   setTimeout(
     () => {
@@ -3008,3 +4825,25 @@ function mostrarToast(
   );
 
 }
+
+/* =========================================================
+   SEGURIDAD LOADER
+========================================================= */
+
+setTimeout(
+  () => {
+
+    const loader =
+      document.getElementById(
+        "rosdriveLoader"
+      );
+
+    if (loader) {
+
+      ocultarPantallaCarga();
+
+    }
+
+  },
+  15000
+);

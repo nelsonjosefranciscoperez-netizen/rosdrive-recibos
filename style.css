@@ -244,7 +244,6 @@ img {
   margin-top: 27px;
 }
 
-
 .nav-item {
   width: 100%;
 
@@ -889,10 +888,9 @@ textarea {
 }
 
 
-/*
-   Compatible con las tarjetas que genera
-   el app.js actual.
-*/
+/* =========================================================
+   TARJETAS DE SOCIOS
+   ========================================================= */
 
 .distribution-card,
 .socio-card,
@@ -937,7 +935,9 @@ textarea {
 }
 
 
-/* Barra superior de cada socio */
+/* =========================================================
+   BARRA SUPERIOR DE CADA SOCIO
+   ========================================================= */
 
 .distribution-card::before,
 .socio-card::before,
@@ -954,9 +954,6 @@ textarea {
 
   background: var(--yellow);
 }
-
-
-/* Colores individuales */
 
 .distribution-card:nth-child(1)::before,
 .socio-card:nth-child(1)::before,
@@ -977,7 +974,9 @@ textarea {
 }
 
 
-/* Encabezado socio */
+/* =========================================================
+   ENCABEZADO SOCIO
+   ========================================================= */
 
 .distribution-card-header,
 .socio-header,
@@ -993,54 +992,32 @@ textarea {
 .partner-info {
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 0;
 }
 
 
-/* Avatar */
+/* =========================================================
+   OCULTAR INICIAL / AVATAR
+   ========================================================= */
+
+/*
+   Ocultamos la letra E / B / H que aparecía
+   antes del nombre del socio.
+
+   No eliminamos el contenedor del encabezado,
+   solamente el avatar/inicial.
+*/
 
 .socio-avatar,
 .partner-avatar,
 .distribution-avatar {
-  width: 43px;
-  height: 43px;
-
-  flex-shrink: 0;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  border-radius: 12px;
-
-  background: #111;
-
-  color: var(--yellow);
-
-  font-size: 17px;
-  font-weight: 900;
-
-  border: 2px solid #f0d44b;
-}
-
-.distribution-card:nth-child(2) .socio-avatar,
-.distribution-card:nth-child(2) .partner-avatar,
-.distribution-card:nth-child(2) .distribution-avatar {
-  border-color: #c8c8c8;
-
-  color: #fff;
-}
-
-.distribution-card:nth-child(3) .socio-avatar,
-.distribution-card:nth-child(3) .partner-avatar,
-.distribution-card:nth-child(3) .distribution-avatar {
-  border-color: #c79a72;
-
-  color: #fff;
+  display: none !important;
 }
 
 
-/* Nombre */
+/* =========================================================
+   NOMBRE
+   ========================================================= */
 
 .distribution-name,
 .socio-name,
@@ -1048,7 +1025,9 @@ textarea {
   font-size: 15px;
   font-weight: 850;
 
-  line-height: 1.15;
+  line-height: 1.2;
+
+  color: #111;
 }
 
 .distribution-role,
@@ -1062,7 +1041,9 @@ textarea {
 }
 
 
-/* Porcentaje */
+/* =========================================================
+   PORCENTAJE
+   ========================================================= */
 
 .distribution-percentage,
 .socio-percentage,
@@ -1077,10 +1058,14 @@ textarea {
 
   font-size: 11px;
   font-weight: 850;
+
+  white-space: nowrap;
 }
 
 
-/* Monto */
+/* =========================================================
+   MONTO
+   ========================================================= */
 
 .distribution-value {
   margin-top: 22px;
@@ -1107,7 +1092,9 @@ textarea {
 }
 
 
-/* WhatsApp */
+/* =========================================================
+   WHATSAPP
+   ========================================================= */
 
 .whatsapp-button {
   width: 100%;
@@ -1685,7 +1672,9 @@ textarea {
 }
 
 
-/* Spinner */
+/* =========================================================
+   SPINNER
+   ========================================================= */
 
 .loading-spinner,
 .rosdrive-loader-spinner {

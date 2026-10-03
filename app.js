@@ -13,9 +13,9 @@ const API_URL =
 const API_CACHE_TTL = 120000;
 
 const SOCIOS = {
-  Erika: "5493416129272",
-  Bruno: "5493416129272",
-  Hector: "5493416129272"
+  Erika: "5493413368913",
+  Bruno: "5493412576895",
+  Hector: "5493413369373"
 };
 
 const PORCENTAJES = {

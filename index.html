@@ -1361,6 +1361,28 @@
             <div class="form-grid">
 
 
+              <!-- NUEVO CAMPO: FECHA DE VENTA -->
+
+              <div class="field">
+
+                <label>
+                  Fecha de venta
+                  <span>*</span>
+                </label>
+
+                <input
+                  id="fechaVenta"
+                  type="date"
+                  required
+                >
+
+                <small class="field-help">
+                  Podés elegir la fecha en la que se realizó la venta.
+                </small>
+
+              </div>
+
+
               <div class="field field-large">
 
                 <label>
@@ -2814,6 +2836,23 @@
 
     }
 
+  </script>
+
+
+  <script>
+    // Fecha de venta: por defecto hoy, usando la fecha local.
+    (function () {
+      const campoFechaVenta = document.getElementById("fechaVenta");
+
+      if (campoFechaVenta && !campoFechaVenta.value) {
+        const hoy = new Date();
+        const anio = hoy.getFullYear();
+        const mes = String(hoy.getMonth() + 1).padStart(2, "0");
+        const dia = String(hoy.getDate()).padStart(2, "0");
+
+        campoFechaVenta.value = `${anio}-${mes}-${dia}`;
+      }
+    })();
   </script>
 
 

@@ -1433,8 +1433,7 @@ async function generarVenta() {
     formaPago,
     estado,
 
-    fecha:
-      new Date().toISOString()
+    fecha: document.getElementById("fechaVenta").value
 
   };
 

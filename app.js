@@ -91,6 +91,8 @@ document.addEventListener(
 
       actualizarFecha();
 
+      inicializarFechaVenta();
+
       actualizarTotal();
 
       const servicio =
@@ -351,7 +353,6 @@ function mostrarSeccion(
   }
 
 }
-
 /* =========================================================
    FECHA
 ========================================================= */
@@ -380,6 +381,65 @@ function actualizarFecha() {
         year: "numeric"
       }
     );
+
+}
+
+/* =========================================================
+   FECHA PERSONALIZABLE DE LA VENTA
+========================================================= */
+
+function obtenerFechaLocalInput() {
+
+  const hoy = new Date();
+  const yyyy = hoy.getFullYear();
+  const mm = String(hoy.getMonth() + 1).padStart(2, "0");
+  const dd = String(hoy.getDate()).padStart(2, "0");
+
+  return `${yyyy}-${mm}-${dd}`;
+
+}
+
+function inicializarFechaVenta() {
+
+  let campo = document.getElementById("fechaVenta");
+
+  // Si el campo no existe en el HTML, se agrega desde app.js.
+  if (!campo) {
+
+    const servicio = document.getElementById("servicio");
+    if (!servicio) {
+      return;
+    }
+
+    const grupo = document.createElement("div");
+    grupo.className = "form-group";
+
+    const etiqueta = document.createElement("label");
+    etiqueta.htmlFor = "fechaVenta";
+    etiqueta.textContent = "Fecha de la venta";
+
+    campo = document.createElement("input");
+    campo.type = "date";
+    campo.id = "fechaVenta";
+    campo.name = "fechaVenta";
+    campo.required = true;
+    campo.className = servicio.className;
+
+    grupo.appendChild(etiqueta);
+    grupo.appendChild(campo);
+
+    const grupoServicio = servicio.closest(".form-group");
+    if (grupoServicio && grupoServicio.parentNode) {
+      grupoServicio.parentNode.insertBefore(grupo, grupoServicio);
+    } else {
+      servicio.parentNode.insertBefore(grupo, servicio);
+    }
+
+  }
+
+  if (!campo.value) {
+    campo.value = obtenerFechaLocalInput();
+  }
 
 }
 
@@ -1052,6 +1112,7 @@ function renderizarUltimasVentas(
   `;
 
 }
+}
 
 /* =========================================================
    ESTADÍSTICAS
@@ -1368,6 +1429,11 @@ async function generarVenta() {
       "estado"
     );
 
+  const fechaVenta =
+    obtenerValor(
+      "fechaVenta"
+    );
+
   if (!cliente) {
 
     mostrarToast(
@@ -1383,6 +1449,17 @@ async function generarVenta() {
 
     mostrarToast(
       "Seleccioná un servicio",
+      "error"
+    );
+
+    return;
+
+  }
+
+  if (!fechaVenta) {
+
+    mostrarToast(
+      "Seleccioná la fecha de la venta",
       "error"
     );
 
@@ -1434,7 +1511,7 @@ async function generarVenta() {
     estado,
 
     fecha:
-      new Date().toISOString()
+      new Date(`${fechaVenta}T12:00:00`).toISOString()
 
   };
 
@@ -1520,7 +1597,7 @@ async function generarVenta() {
     console.error(
       error
     );
-
+    
     mostrarToast(
       "Error: " +
       error.message,
@@ -1904,10 +1981,14 @@ function limpiarFormulario() {
 
   }
 
+  const fechaVenta = document.getElementById("fechaVenta");
+  if (fechaVenta) {
+    fechaVenta.value = obtenerFechaLocalInput();
+  }
+
   actualizarTotal();
 
 }
-
 /* =========================================================
    RECIBOS - FILTRO
 ========================================================= */
@@ -2431,7 +2512,6 @@ function renderizarClientes(
   `;
 
 }
-
 /* =========================================================
    VENTAS - FILTRO
 ========================================================= */
@@ -2916,9 +2996,7 @@ async function registrarGasto() {
       );
 
     }
-
-
-    const resultado =
+        const resultado =
       await respuesta.json();
 
 
@@ -3466,7 +3544,7 @@ async function calcularBalance() {
       inicio:
         obtenerFechaObjeto(
           resultado.desde ||
-          desde
+                    desde
         ),
 
       fin:
@@ -4016,8 +4094,7 @@ function colocarTexto(
 
     }
   );
-
-}
+  }
 
 /* =========================================================
    TABLA VENTAS BALANCE
@@ -4565,7 +4642,6 @@ ${formatearDinero(
 RosDrive 🚗`;
 
 }
-
 /* =========================================================
    CERRAR BALANCE
 ========================================================= */
